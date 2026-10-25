@@ -110,6 +110,10 @@ public class CadenceMediaService extends MediaSessionService {
                         ? null : mediaItem.mediaMetadata.artworkUri.toString();
                 MainActivity activity = MainActivity.getInstance();
                 if (activity != null) activity.handleNativeTrack(currentVideoId);
+                if (mediaItem.localConfiguration != null
+                        && "cadence".equals(mediaItem.localConfiguration.uri.getScheme())) {
+                    resolveCurrentTrack(player.getPlayWhenReady());
+                }
             }
 
             @Override
@@ -214,21 +218,49 @@ public class CadenceMediaService extends MediaSessionService {
         }
         recoveryAttempts = 0;
         resolveGeneration++;
-        int generation = resolveGeneration;
-        new Thread(() -> {
+        runOnPlayerThread(() -> {
+            if (resolveGeneration <= 0 || player == null) return;
             try {
-                String streamUrl = StreamUrlResolver.resolveBlocking(videoId);
-                if (streamUrl == null || streamUrl.isEmpty()) {
-                    throw new IllegalStateException("No playable audio URL returned");
+                JSONArray items = new JSONArray();
+                if (queueJson.length() == 0) {
+                    JSONObject selected = new JSONObject();
+                    selected.put("id", videoId);
+                    selected.put("title", title == null ? "Cadence Music" : title);
+                    selected.put("artist", artist == null ? "Playing" : artist);
+                    selected.put("artworkUrl", artworkUrl == null ? "" : artworkUrl);
+                    items.put(selected);
+                } else {
+                    for (int index = 0; index < queueJson.length(); index++) {
+                        JSONObject item = queueJson.getJSONObject(index);
+                        if (videoId.equals(item.optString("id"))) {
+                            items.put(item);
+                        }
+                    }
+                    if (items.length() == 0) {
+                        JSONObject selected = new JSONObject();
+                        selected.put("id", videoId);
+                        selected.put("title", title == null ? "Cadence Music" : title);
+                        selected.put("artist", artist == null ? "Playing" : artist);
+                        selected.put("artworkUrl", artworkUrl == null ? "" : artworkUrl);
+                        items.put(selected);
+                    }
+                    for (int index = 0; index < queueJson.length(); index++) {
+                        JSONObject item = queueJson.getJSONObject(index);
+                        if (!videoId.equals(item.optString("id"))) items.put(item);
+                    }
                 }
-                runOnPlayerThread(() -> {
-                    if (generation != resolveGeneration) return;
-                    applyResolvedStream(videoId, title, artist, artworkUrl, streamUrl, shouldPlay);
-                });
+                MediaItem[] mediaItems = new MediaItem[items.length()];
+                for (int index = 0; index < items.length(); index++) {
+                    mediaItems[index] = createUnresolvedMediaItem(items.getJSONObject(index), index);
+                }
+                player.setMediaItems(java.util.Arrays.asList(mediaItems), 0, 0);
+                player.prepare();
+                player.setPlayWhenReady(shouldPlay);
+                resolveCurrentTrack(shouldPlay);
             } catch (Exception error) {
-                Log.e(TAG, "Unable to start native audio stream", error);
+                Log.e(TAG, "Unable to create native playback queue", error);
             }
-        }).start();
+        });
     }
 
     private void applyResolvedStream(
@@ -250,38 +282,16 @@ public class CadenceMediaService extends MediaSessionService {
                 .setUri(Uri.parse(streamUrl))
                 .setMediaMetadata(metadata)
                 .build();
-        player.setMediaItem(item);
+        int currentIndex = player.getCurrentMediaItemIndex();
+        if (currentIndex < 0 || currentIndex >= player.getMediaItemCount()) return;
+        player.replaceMediaItem(currentIndex, item);
         player.prepare();
         player.setPlayWhenReady(shouldPlay);
         MainActivity activity = MainActivity.getInstance();
         if (activity != null) activity.handleNativeTrack(videoId);
-        resolveUpcomingItems(videoId);
     }
 
-    private void resolveUpcomingItems(String currentId) {
-        if (queueJson == null || queueJson.length() < 2) return;
-        final int generation = resolveGeneration;
-        new Thread(() -> {
-            for (int index = 0; index < queueJson.length(); index++) {
-                try {
-                    JSONObject song = queueJson.getJSONObject(index);
-                    String videoId = song.optString("id");
-                    if (videoId.isEmpty() || videoId.equals(currentId)) continue;
-                    String streamUrl = StreamUrlResolver.resolveBlocking(videoId);
-                    if (streamUrl == null || streamUrl.isEmpty()) continue;
-                    final int itemIndex = index;
-                    runOnPlayerThread(() -> {
-                        if (generation != resolveGeneration) return;
-                        player.addMediaItem(createMediaItem(song, streamUrl, itemIndex));
-                    });
-                } catch (Exception error) {
-                    Log.w(TAG, "Unable to resolve queued track", error);
-                }
-            }
-        }).start();
-    }
-
-    private MediaItem createMediaItem(JSONObject song, String streamUrl, int index) {
+    private MediaItem createUnresolvedMediaItem(JSONObject song, int index) {
         String videoId = song.optString("id");
         MediaMetadata metadata = new MediaMetadata.Builder()
                 .setTitle(song.optString("title", "Cadence Music"))
@@ -291,7 +301,7 @@ public class CadenceMediaService extends MediaSessionService {
                 .build();
         return new MediaItem.Builder()
                 .setMediaId(videoId + ":" + index)
-                .setUri(Uri.parse(streamUrl))
+                .setUri(Uri.parse("cadence://unresolved/" + videoId))
                 .setMediaMetadata(metadata)
                 .build();
     }
@@ -309,7 +319,7 @@ public class CadenceMediaService extends MediaSessionService {
                 }
                 runOnPlayerThread(() -> {
                     resolving = false;
-                    if (generation != resolveGeneration) return;
+                    if (generation != resolveGeneration || !videoId.equals(currentVideoId)) return;
                     applyResolvedStream(
                             videoId,
                             currentTitle,
