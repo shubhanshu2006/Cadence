@@ -164,7 +164,7 @@ public class CadenceMediaService extends MediaSessionService {
         setMediaNotificationProvider(
                 new DefaultMediaNotificationProvider.Builder(this)
                         .setChannelId(PLAYBACK_CHANNEL_ID)
-                        .setChannelName(getString(R.string.app_name))
+                        .setChannelName(R.string.app_name)
                         .build()
         );
     }
