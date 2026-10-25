@@ -203,12 +203,17 @@ export class YouTubeService {
       }
 
       if (songs.length > 0) return songs;
-    } catch (err) {
-      console.warn('Innertube getUpNext failed, using fallback query:', err);
+    } catch {
+      // YouTube enforces BotGuard on datacenter IPs; cleanly fallback to smart search recommendations
     }
 
-    // Fallback: search similar songs
-    return (await this.search('recommended music radio playlist')).filter((s) => s.id !== videoId).slice(0, 15);
+    // Resilient fallback: search popular radio mix recommendations
+    try {
+      const fallbackTracks = await this.search('trending hits radio mix');
+      return fallbackTracks.filter((s) => s.id !== videoId).slice(0, 15);
+    } catch {
+      return [];
+    }
   }
 
   // In-memory cache for resolved stream URLs (videoId -> { url, expiry })
@@ -242,8 +247,8 @@ export class YouTubeService {
           status: 200,
         };
       }
-    } catch (err: any) {
-      console.warn(`Innertube download failed for ${videoId}:`, err?.message || err);
+    } catch {
+      // Fall through to secondary CDN resolver if direct download is unavailable
     }
 
     // 2. Secondary: Deciphered stream format via yt.getStreamingData or info
@@ -366,8 +371,8 @@ export class YouTubeService {
           }
         }
       }
-    } catch (err: any) {
-      console.warn(`Innertube fallback info check failed for ${videoId}:`, err?.message || err);
+    } catch {
+      // Fall through to YouTube client player if direct CDN deciphering is unavailable
     }
 
     return null;
