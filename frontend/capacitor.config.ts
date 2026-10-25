@@ -7,7 +7,6 @@ const config: CapacitorConfig = {
   server: {
     androidScheme: 'https',
     cleartext: true,
-    url: 'https://frontend-nu-two-31.vercel.app',
   },
 };
 
