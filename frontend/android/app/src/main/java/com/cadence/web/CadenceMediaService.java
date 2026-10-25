@@ -1,7 +1,10 @@
 package com.cadence.web;
 
 import android.app.PendingIntent;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.content.Intent;
+import android.os.Build;
 import android.net.Uri;
 import android.os.Handler;
 import android.util.Log;
@@ -21,9 +24,11 @@ import androidx.media3.exoplayer.DefaultLoadControl;
 import androidx.media3.exoplayer.ExoPlayer;
 import androidx.media3.session.MediaSession;
 import androidx.media3.session.MediaSessionService;
+import androidx.media3.session.DefaultMediaNotificationProvider;
 
 public class CadenceMediaService extends MediaSessionService {
     private static final String TAG = "CadenceMediaService";
+    private static final String PLAYBACK_CHANNEL_ID = "cadence_playback";
 
     public static final String ACTION_PLAY_TRACK = "com.cadence.web.ACTION_PLAY_TRACK";
     public static final String ACTION_STOP = "com.cadence.web.ACTION_STOP";
@@ -81,6 +86,7 @@ public class CadenceMediaService extends MediaSessionService {
         super.onCreate();
         instance = this;
         progressHandler = new Handler(getMainLooper());
+        createPlaybackNotificationChannel();
 
         AudioAttributes audioAttributes = new AudioAttributes.Builder()
                 .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
@@ -139,6 +145,8 @@ public class CadenceMediaService extends MediaSessionService {
                 if (recoveryAttempts < 2) {
                     recoveryAttempts++;
                     resolveCurrentTrack(true);
+                } else if (player.hasNextMediaItem()) {
+                    player.seekToNextMediaItem();
                 }
             }
         });
@@ -153,6 +161,26 @@ public class CadenceMediaService extends MediaSessionService {
         mediaSession = new MediaSession.Builder(this, player)
                 .setSessionActivity(sessionActivity)
                 .build();
+        setMediaNotificationProvider(
+                new DefaultMediaNotificationProvider.Builder(this)
+                        .setChannelId(PLAYBACK_CHANNEL_ID)
+                        .setChannelName(getString(R.string.app_name))
+                        .build()
+        );
+    }
+
+    private void createPlaybackNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel channel = new NotificationChannel(
+                    PLAYBACK_CHANNEL_ID,
+                    getString(R.string.app_name),
+                    NotificationManager.IMPORTANCE_LOW
+            );
+            channel.setDescription("Now playing and playback controls");
+            channel.setShowBadge(false);
+            NotificationManager manager = getSystemService(NotificationManager.class);
+            if (manager != null) manager.createNotificationChannel(channel);
+        }
     }
 
     @Override
@@ -171,17 +199,19 @@ public class CadenceMediaService extends MediaSessionService {
                     intent.getBooleanExtra(EXTRA_IS_PLAYING, true)
             );
         } else if (ACTION_PLAY.equals(action)) {
-            player.play();
+            if (player != null) player.play();
         } else if (ACTION_PAUSE.equals(action)) {
-            player.pause();
+            if (player != null) player.pause();
         } else if (ACTION_SEEK.equals(action)) {
-            player.seekTo(Math.max(0L, intent.getLongExtra(EXTRA_POSITION_MS, 0L)));
+            if (player != null) {
+                player.seekTo(Math.max(0L, intent.getLongExtra(EXTRA_POSITION_MS, 0L)));
+            }
         } else if (ACTION_SYNC_PROGRESS.equals(action)) {
             reportProgress(player.getPlayWhenReady());
         } else if (ACTION_STOP.equals(action)) {
             stopPlayback();
         } else if (ACTION_NEXT.equals(action) || ACTION_PREV.equals(action)) {
-            if (player.getMediaItemCount() > 1) {
+            if (player != null && player.getMediaItemCount() > 1) {
                 if (ACTION_NEXT.equals(action)) player.seekToNextMediaItem();
                 else player.seekToPreviousMediaItem();
             } else {
@@ -248,6 +278,9 @@ public class CadenceMediaService extends MediaSessionService {
                         JSONObject item = queueJson.getJSONObject(index);
                         if (!videoId.equals(item.optString("id"))) items.put(item);
                     }
+                }
+                if (items.length() == 0) {
+                    throw new IllegalStateException("Native queue is empty");
                 }
                 MediaItem[] mediaItems = new MediaItem[items.length()];
                 for (int index = 0; index < items.length(); index++) {
@@ -332,6 +365,14 @@ public class CadenceMediaService extends MediaSessionService {
             } catch (Exception error) {
                 resolving = false;
                 Log.e(TAG, "Unable to recover native audio stream", error);
+                runOnPlayerThread(() -> {
+                    if (generation != resolveGeneration || player == null) return;
+                    if (player.hasNextMediaItem()) {
+                        player.seekToNextMediaItem();
+                    } else {
+                        player.pause();
+                    }
+                });
             }
         }).start();
     }

@@ -77,7 +77,7 @@ public class MainActivity extends BridgeActivity {
             intent.setAction(action);
             try {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    startForegroundService(intent);
+                    startService(intent);
                 } else {
                     startService(intent);
                 }
@@ -96,7 +96,7 @@ public class MainActivity extends BridgeActivity {
             );
             try {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    startForegroundService(intent);
+                    startService(intent);
                 } else {
                     startService(intent);
                 }

@@ -391,7 +391,8 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       const nativeQueue = [
         song,
         ...requestedQueue.filter((item) => item.id !== song.id),
-      ].filter((item, index, items) => items.findIndex((candidate) => candidate.id === item.id) === index);
+      ].filter((item, index, items) => items.findIndex((candidate) => candidate.id === item.id) === index)
+        .slice(0, 20);
       try {
         ytPlayerRef.current?.pauseVideo?.();
       } catch {}
