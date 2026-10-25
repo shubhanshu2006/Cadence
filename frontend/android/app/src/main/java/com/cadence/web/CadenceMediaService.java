@@ -2,7 +2,6 @@ package com.cadence.web;
 
 import android.content.Intent;
 import android.net.Uri;
-import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
 
@@ -16,15 +15,6 @@ import androidx.media3.common.Player;
 import androidx.media3.exoplayer.ExoPlayer;
 import androidx.media3.session.MediaSession;
 import androidx.media3.session.MediaSessionService;
-
-import org.json.JSONObject;
-
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 public class CadenceMediaService extends MediaSessionService {
     private static final String TAG = "CadenceMediaService";
@@ -45,7 +35,6 @@ public class CadenceMediaService extends MediaSessionService {
 
     private ExoPlayer player;
     private MediaSession mediaSession;
-    private ExecutorService resolverExecutor;
     private Handler progressHandler;
     private final Runnable progressReporter = new Runnable() {
         @Override
@@ -63,7 +52,6 @@ public class CadenceMediaService extends MediaSessionService {
     @Override
     public void onCreate() {
         super.onCreate();
-        resolverExecutor = Executors.newSingleThreadExecutor();
         progressHandler = new Handler(getMainLooper());
 
         AudioAttributes audioAttributes = new AudioAttributes.Builder()
@@ -134,33 +122,12 @@ public class CadenceMediaService extends MediaSessionService {
             return;
         }
 
-        String resolverUrl = backendUrl.replaceAll("/+$", "")
-                + "/api/stream-url/" + Uri.encode(videoId);
-        resolverExecutor.execute(() -> {
+        new Thread(() -> {
             try {
-                HttpURLConnection connection = (HttpURLConnection) new URL(resolverUrl).openConnection();
-                connection.setConnectTimeout(10000);
-                connection.setReadTimeout(60000);
-                connection.setRequestMethod("GET");
-                int responseCode = connection.getResponseCode();
-                if (responseCode < 200 || responseCode >= 300) {
-                    throw new IllegalStateException("Stream resolver returned " + responseCode);
+                String streamUrl = StreamUrlResolver.resolveBlocking(videoId);
+                if (streamUrl == null || streamUrl.isEmpty()) {
+                    throw new IllegalStateException("No playable audio URL returned");
                 }
-
-                StringBuilder body = new StringBuilder();
-                try (BufferedReader reader = new BufferedReader(
-                        new InputStreamReader(connection.getInputStream()))) {
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                        body.append(line);
-                    }
-                } finally {
-                    connection.disconnect();
-                }
-
-                String streamUrl = new JSONObject(body.toString()).optString("url", "");
-                if (streamUrl.isEmpty()) throw new IllegalStateException("Resolver returned no stream URL");
-
                 runOnPlayerThread(() -> {
                     MediaMetadata metadata = new MediaMetadata.Builder()
                             .setTitle(title == null ? "Cadence Music" : title)
@@ -170,7 +137,7 @@ public class CadenceMediaService extends MediaSessionService {
                             .build();
                     MediaItem item = new MediaItem.Builder()
                             .setMediaId(videoId)
-                            .setUri(streamUrl)
+                            .setUri(Uri.parse(streamUrl))
                             .setMediaMetadata(metadata)
                             .build();
                     player.setMediaItem(item);
@@ -178,9 +145,9 @@ public class CadenceMediaService extends MediaSessionService {
                     player.setPlayWhenReady(shouldPlay);
                 });
             } catch (Exception error) {
-                Log.e(TAG, "Unable to resolve native audio stream", error);
+                Log.e(TAG, "Unable to start native audio stream", error);
             }
-        });
+        }).start();
     }
 
     private void runOnPlayerThread(Runnable action) {
@@ -215,7 +182,6 @@ public class CadenceMediaService extends MediaSessionService {
 
     @Override
     public void onDestroy() {
-        if (resolverExecutor != null) resolverExecutor.shutdownNow();
         if (progressHandler != null) progressHandler.removeCallbacksAndMessages(null);
         if (mediaSession != null) mediaSession.release();
         if (player != null) player.release();
