@@ -1,13 +1,17 @@
 package com.cadence.web;
 
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebSettings;
+import android.util.Log;
 import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
+    private static final int NOTIFICATION_PERMISSION_REQUEST_CODE = 1002;
+    private static final String TAG = "CadenceMainActivity";
     private static MainActivity instance;
 
     public static MainActivity getInstance() {
@@ -19,6 +23,8 @@ public class MainActivity extends BridgeActivity {
         super.onCreate(savedInstanceState);
         instance = this;
 
+        requestNotificationPermission();
+
         if (getBridge() != null && getBridge().getWebView() != null) {
             WebSettings settings = getBridge().getWebView().getSettings();
             // Allow continuous background audio playback without requiring gesture per track
@@ -26,6 +32,17 @@ public class MainActivity extends BridgeActivity {
 
             // Register native bridge for notification player
             getBridge().getWebView().addJavascriptInterface(new AndroidMediaBridge(), "AndroidMediaBridge");
+        }
+    }
+
+    private void requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                && checkSelfPermission("android.permission.POST_NOTIFICATIONS")
+                != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(
+                    new String[]{"android.permission.POST_NOTIFICATIONS"},
+                    NOTIFICATION_PERMISSION_REQUEST_CODE
+            );
         }
     }
 
@@ -45,7 +62,9 @@ public class MainActivity extends BridgeActivity {
                 } else {
                     startService(intent);
                 }
-            } catch (Exception ignored) {}
+            } catch (Exception exception) {
+                Log.e(TAG, "Unable to start media playback service", exception);
+            }
         }
 
         @JavascriptInterface
@@ -54,7 +73,9 @@ public class MainActivity extends BridgeActivity {
             intent.setAction(CadenceMediaService.ACTION_STOP);
             try {
                 startService(intent);
-            } catch (Exception ignored) {}
+            } catch (Exception exception) {
+                Log.e(TAG, "Unable to stop media playback service", exception);
+            }
         }
     }
 

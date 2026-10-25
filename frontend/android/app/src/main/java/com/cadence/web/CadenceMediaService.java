@@ -97,7 +97,7 @@ public class CadenceMediaService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        if (intent == null) return START_NOT_STICKY;
+        if (intent == null) return START_STICKY;
 
         String action = intent.getAction();
         if (ACTION_STOP.equals(action)) {
@@ -121,6 +121,14 @@ public class CadenceMediaService extends Service {
         }
 
         return START_STICKY;
+    }
+
+    @Override
+    public void onTaskRemoved(Intent rootIntent) {
+        // Keep the foreground media session and notification alive when the app is
+        // dismissed from the recent-apps list. Playback is owned by the WebView,
+        // so stopping this service here would also remove the media controls.
+        super.onTaskRemoved(rootIntent);
     }
 
     private void sendControlAction(String action) {
