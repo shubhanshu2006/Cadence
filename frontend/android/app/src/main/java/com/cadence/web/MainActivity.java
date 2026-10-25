@@ -84,6 +84,25 @@ public class MainActivity extends BridgeActivity {
                 Log.e(TAG, "Unable to control media playback service", exception);
             }
         }
+
+        @JavascriptInterface
+        public void seekTo(double positionSeconds) {
+            Intent intent = new Intent(MainActivity.this, CadenceMediaService.class);
+            intent.setAction(CadenceMediaService.ACTION_SEEK);
+            intent.putExtra(
+                    CadenceMediaService.EXTRA_POSITION_MS,
+                    Math.max(0L, (long) (positionSeconds * 1000))
+            );
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    startForegroundService(intent);
+                } else {
+                    startService(intent);
+                }
+            } catch (Exception exception) {
+                Log.e(TAG, "Unable to seek native media playback", exception);
+            }
+        }
     }
 
     public void handleMediaControl(String action) {

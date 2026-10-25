@@ -144,7 +144,6 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const isPlayingRef = useRef<boolean>(isPlaying);
   isPlayingRef.current = isPlaying;
   const manualPauseRef = useRef<boolean>(false);
-  const nativeProgressReceivedRef = useRef<boolean>(false);
 
   // Top-level silent audio element: triggers Android MediaSession in notification shade & prevents WebView throttling
   const silentAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -380,7 +379,6 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     const nativeBridge = typeof window !== 'undefined' ? (window as any).AndroidMediaBridge : null;
     if (nativeBridge?.playTrack) {
-      nativeProgressReceivedRef.current = false;
       nativeBridge.playTrack(
         song.id,
         song.title,
@@ -390,18 +388,6 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         true
       );
       setIsPlaying(true);
-      window.setTimeout(() => {
-        if (
-          !nativeProgressReceivedRef.current &&
-          currentSongRef.current?.id === song.id &&
-          !manualPauseRef.current &&
-          ytPlayerRef.current &&
-          isYtReadyRef.current
-        ) {
-          ytPlayerRef.current.loadVideoById(song.id);
-          ytPlayerRef.current.playVideo();
-        }
-      }, 10000);
     } else if (ytPlayerRef.current && isYtReadyRef.current && typeof ytPlayerRef.current.loadVideoById === 'function') {
       try {
         ytPlayerRef.current.loadVideoById(song.id);
@@ -614,7 +600,6 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         setDuration(durationMs / 1000);
       }
       setIsPlaying(playing);
-      nativeProgressReceivedRef.current = true;
     };
 
     return () => {
@@ -623,10 +608,14 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, []);
 
   const seekTo = (time: number) => {
-    setCurrentTime(time);
-    if (ytPlayerRef.current && typeof ytPlayerRef.current.seekTo === 'function') {
+    const nextTime = Math.max(0, Number.isFinite(time) ? time : 0);
+    setCurrentTime(nextTime);
+    const nativeBridge = typeof window !== 'undefined' ? (window as any).AndroidMediaBridge : null;
+    if (nativeBridge?.seekTo) {
+      nativeBridge.seekTo(nextTime);
+    } else if (ytPlayerRef.current && typeof ytPlayerRef.current.seekTo === 'function') {
       try {
-        ytPlayerRef.current.seekTo(time, true);
+        ytPlayerRef.current.seekTo(nextTime, true);
       } catch {}
     }
   };
