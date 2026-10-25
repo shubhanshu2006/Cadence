@@ -1,5 +1,5 @@
 /**
- * Cross-platform API utility for Nyxora.
+ * Cross-platform API utility for Cadence.
  * Seamlessly connects:
  * - Native Android APK -> https://nyxora-sit3.onrender.com
  * - Vercel Production Web -> https://nyxora-sit3.onrender.com

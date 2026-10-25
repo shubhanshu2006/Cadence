@@ -47,7 +47,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
               }}
             >
               <Radio size={18} />
-              <span>Start Nyxora Radio</span>
+              <span>Start Cadence Radio</span>
             </button>
           </div>
         </div>

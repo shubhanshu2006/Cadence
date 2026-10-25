@@ -25,7 +25,7 @@ app.use(express.json());
 app.get('/api/health', (_req: Request, res: Response) => {
   res.json({
     status: 'ok',
-    service: 'Nyxora Web API',
+    service: 'Cadence Web API',
     version: '1.0.0',
   });
 });
@@ -89,7 +89,7 @@ app.get('/api/radio/next', async (req: Request, res: Response) => {
   }
 });
 
-// Direct stream URL resolver endpoint (matching Android Nyxora StreamUrlResolver)
+// Direct stream URL resolver endpoint (matching Android Cadence StreamUrlResolver)
 app.get('/api/stream-url/:videoId', async (req: Request, res: Response) => {
   const { videoId } = req.params;
   try {
@@ -181,5 +181,5 @@ app.get('/api/discover', async (_req: Request, res: Response) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`🎵 Nyxora TypeScript backend is running on http://localhost:${PORT}`);
+  console.log(`🎵 Cadence TypeScript backend is running on http://localhost:${PORT}`);
 });

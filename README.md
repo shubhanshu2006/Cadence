@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🎵 Nyxora
+# 🎵 Cadence
 
 **A modern, high-fidelity music streaming player and AI Radio experience.**
 
@@ -34,7 +34,7 @@
 ## 📂 Project Architecture
 
 ```
-Nyxora/
+Cadence/
 ├── backend/                  # Node.js + Express TypeScript API
 │   ├── src/
 │   │   ├── services/         # YouTubei.js, Lyrics (LRCLIB), Weather, RSS
@@ -95,12 +95,12 @@ Every time you push code to GitHub, the APK is automatically compiled in the clo
 1. Push your repository to GitHub:
    ```bash
    git add .
-   git commit -m "Build Nyxora APK"
+   git commit -m "Build Cadence APK"
    git push origin main
    ```
 2. Navigate to the **Actions** tab on your GitHub repository.
 3. Select the latest **"Build Android APK"** workflow run.
-4. Download the ready-to-install **`Nyxora.apk`** file under **Artifacts**!
+4. Download the ready-to-install **`Cadence.apk`** file under **Artifacts**!
 
 ---
 
@@ -120,7 +120,7 @@ cd android
 *(On Windows PowerShell, use `.\gradlew assembleDebug`)*
 
 The generated installer will be located at:
-`frontend/android/app/build/outputs/apk/debug/Nyxora.apk`
+`frontend/android/app/build/outputs/apk/debug/Cadence.apk`
 
 ---
 
@@ -140,7 +140,7 @@ For the Android APK to stream songs for anyone in the world without running a lo
    ```env
    VITE_API_BASE_URL=https://your-backend-api.onrender.com
    ```
-2. **Option B (Inside the App)**: Open Nyxora > tap the **Settings icon (⚙️)** > enter your backend URL in the **Backend API Server** field and tap **Save**.
+2. **Option B (Inside the App)**: Open Cadence > tap the **Settings icon (⚙️)** > enter your backend URL in the **Backend API Server** field and tap **Save**.
 
 ---
 
@@ -166,4 +166,4 @@ For the Android APK to stream songs for anyone in the world without running a lo
 ## 📄 License & Disclaimer
 
 - **License**: Released under the [MIT License](LICENSE).
-- **Disclaimer**: Nyxora is an independent open-source educational project. It is not affiliated with, endorsed by, or sponsored by YouTube, Google, ElevenLabs, or LRCLIB.
+- **Disclaimer**: Cadence is an independent open-source educational project. It is not affiliated with, endorsed by, or sponsored by YouTube, Google, ElevenLabs, or LRCLIB.

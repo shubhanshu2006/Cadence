@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Nyxora</string>
-    <string name="title_activity_main">Nyxora</string>
-    <string name="package_name">com.nyxora.web</string>
-    <string name="custom_url_scheme">com.nyxora.web</string>
+    <string name="app_name">Cadence</string>
+    <string name="title_activity_main">Cadence</string>
+    <string name="package_name">com.cadence.web</string>
+    <string name="custom_url_scheme">com.cadence.web</string>
 </resources>

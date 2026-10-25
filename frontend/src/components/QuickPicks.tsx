@@ -55,7 +55,7 @@ export const QuickPicks: React.FC<QuickPicksProps> = ({
           return (
             <div
               key={`quick-${song.id}-${qIdx}`}
-              className="track-card"
+              className={`track-card ${isThisSelected ? 'track-card-active' : ''}`}
               onClick={() => {
                 if (isThisSelected) {
                   togglePlayPause();
@@ -64,7 +64,7 @@ export const QuickPicks: React.FC<QuickPicksProps> = ({
                 }
               }}
             >
-              <div className="track-thumb-wrapper">
+              <div className={`track-thumb-wrapper ${isThisSelected ? 'active-playing-thumb' : ''}`}>
                 <img
                   src={song.thumbnailUrl || `https://i.ytimg.com/vi/${song.id}/hqdefault.jpg`}
                   alt={song.title}
@@ -72,25 +72,43 @@ export const QuickPicks: React.FC<QuickPicksProps> = ({
                   loading="lazy"
                 />
 
-                <div className="track-overlay-actions" onClick={(e) => e.stopPropagation()}>
+                {/* Active Playing Badge */}
+                {isThisSelected && (
+                  <div className="track-now-playing-badge" title={isThisPlaying ? 'Playing' : 'Paused'}>
+                    {isThisPlaying ? (
+                      <div className="soundwave-bars">
+                        <span />
+                        <span />
+                        <span />
+                      </div>
+                    ) : (
+                      <Play size={12} fill="white" />
+                    )}
+                  </div>
+                )}
+
+                {/* Desktop-only Mouse Hover Overlay */}
+                <div className="track-desktop-hover-overlay" onClick={(e) => e.stopPropagation()}>
                   <button
                     className="track-overlay-small-btn"
                     onClick={() => addToQueue(song)}
                     title="Add to queue"
+                    aria-label="Add to queue"
                   >
-                    <ListPlus size={16} />
+                    <ListPlus size={15} />
                   </button>
 
                   <button
                     className="track-overlay-small-btn"
                     onClick={() => setTargetSongForPlaylist(song)}
                     title="Add to playlist"
+                    aria-label="Add to playlist"
                   >
-                    <FolderPlus size={16} />
+                    <FolderPlus size={15} />
                   </button>
 
                   <button
-                    className="track-overlay-btn"
+                    className="track-overlay-play-btn"
                     onClick={() => {
                       if (isThisSelected) {
                         togglePlayPause();
@@ -99,18 +117,41 @@ export const QuickPicks: React.FC<QuickPicksProps> = ({
                       }
                     }}
                     title={isThisPlaying ? 'Pause' : 'Play'}
+                    aria-label={isThisPlaying ? 'Pause' : 'Play'}
                   >
-                    {isThisPlaying ? <Pause size={20} fill="white" /> : <Play size={20} fill="white" />}
+                    {isThisPlaying ? <Pause size={18} fill="white" /> : <Play size={18} fill="white" />}
                   </button>
                 </div>
               </div>
 
-              <div>
-                <div className="track-title" title={song.title}>
-                  {song.title}
+              <div className="track-info">
+                <div className="track-text">
+                  <div className="track-title" title={song.title}>
+                    {song.title}
+                  </div>
+                  <div className="track-artist">
+                    {song.artists && song.artists.length > 0 ? song.artists.map((a) => a.name).join(', ') : 'Various Artists'}
+                  </div>
                 </div>
-                <div className="track-artist">
-                  {song.artists && song.artists.length > 0 ? song.artists.map((a) => a.name).join(', ') : 'Various Artists'}
+
+                {/* Mobile Quick Action Buttons (Add to queue / playlist) */}
+                <div className="track-mobile-actions" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    className="track-inline-action-btn"
+                    onClick={() => addToQueue(song)}
+                    title="Add to queue"
+                    aria-label="Add to queue"
+                  >
+                    <ListPlus size={14} />
+                  </button>
+                  <button
+                    className="track-inline-action-btn"
+                    onClick={() => setTargetSongForPlaylist(song)}
+                    title="Add to playlist"
+                    aria-label="Add to playlist"
+                  >
+                    <FolderPlus size={14} />
+                  </button>
                 </div>
               </div>
             </div>

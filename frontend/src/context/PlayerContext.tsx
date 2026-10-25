@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { SongItem, Playlist } from '../types';
-import { apiFetch } from '../utils/api';
+import { apiFetch, getApiBaseUrl } from '../utils/api';
 
 declare global {
   interface Window {
@@ -87,7 +87,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [queue, setQueue] = useState<SongItem[]>([]);
   const [history, setHistory] = useState<SongItem[]>(() => {
     try {
-      const saved = localStorage.getItem('nyxora_history');
+      const saved = localStorage.getItem('cadence_history') || localStorage.getItem('nyxora_history');
       return saved ? JSON.parse(saved) : [];
     } catch {
       return [];
@@ -96,7 +96,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const [likedSongs, setLikedSongs] = useState<SongItem[]>(() => {
     try {
-      const saved = localStorage.getItem('nyxora_liked');
+      const saved = localStorage.getItem('cadence_liked') || localStorage.getItem('nyxora_liked');
       return saved ? JSON.parse(saved) : [];
     } catch {
       return [];
@@ -105,7 +105,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const [playlists, setPlaylists] = useState<Playlist[]>(() => {
     try {
-      const saved = localStorage.getItem('nyxora_playlists');
+      const saved = localStorage.getItem('cadence_playlists') || localStorage.getItem('nyxora_playlists');
       if (saved) return JSON.parse(saved);
     } catch {}
     return [
@@ -123,7 +123,11 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [targetSongForPlaylist, setTargetSongForPlaylist] = useState<SongItem | null>(null);
   const toastTimeoutRef = useRef<any>(null);
 
-  // YouTube Player References & State Sync Refs
+  // Dedicated Native HTML5 Audio Engine (Enables seamless background playback on mobile)
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const activeEngineRef = useRef<'audio' | 'yt'>('audio');
+
+  // YouTube Player References & State Sync Refs (Secondary Fallback)
   const ytPlayerRef = useRef<any>(null);
   const isYtReadyRef = useRef<boolean>(false);
   const pendingSongRef = useRef<SongItem | null>(null);
@@ -153,20 +157,86 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }, 2800);
   };
 
-  // Background playback keeper: prevents browser or YouTube from pausing when tab/screen is switched
+  // Initialize Native HTML5 Audio Engine for continuous Spotify-style background playback
+  useEffect(() => {
+    const audio = audioRef.current || new Audio();
+    audio.preload = 'auto';
+    audioRef.current = audio;
+
+    const onPlay = () => {
+      setIsPlaying(true);
+      manualPauseRef.current = false;
+    };
+
+    const onPause = () => {
+      if (manualPauseRef.current) {
+        setIsPlaying(false);
+      }
+    };
+
+    const onTimeUpdate = () => {
+      if (activeEngineRef.current === 'audio') {
+        setCurrentTime(audio.currentTime);
+      }
+    };
+
+    const onDurationChange = () => {
+      if (activeEngineRef.current === 'audio' && audio.duration && !isNaN(audio.duration) && audio.duration > 0) {
+        setDuration(audio.duration);
+      }
+    };
+
+    const onEnded = () => {
+      if (activeEngineRef.current === 'audio') {
+        handleSongEnded();
+      }
+    };
+
+    const onError = () => {
+      if (activeEngineRef.current === 'audio' && currentSongRef.current) {
+        console.warn('Native audio stream error, falling back to YouTube Iframe');
+        fallbackToYouTube(currentSongRef.current);
+      }
+    };
+
+    audio.addEventListener('play', onPlay);
+    audio.addEventListener('pause', onPause);
+    audio.addEventListener('timeupdate', onTimeUpdate);
+    audio.addEventListener('durationchange', onDurationChange);
+    audio.addEventListener('ended', onEnded);
+    audio.addEventListener('error', onError);
+
+    return () => {
+      audio.removeEventListener('play', onPlay);
+      audio.removeEventListener('pause', onPause);
+      audio.removeEventListener('timeupdate', onTimeUpdate);
+      audio.removeEventListener('durationchange', onDurationChange);
+      audio.removeEventListener('ended', onEnded);
+      audio.removeEventListener('error', onError);
+    };
+  }, []);
+
+  // Background playback preservation for YouTube IFrame fallback
   useEffect(() => {
     const handleBackgroundPreservation = () => {
       if (document.hidden && isPlayingRef.current && !manualPauseRef.current) {
-        setTimeout(() => {
-          if (ytPlayerRef.current && isPlayingRef.current && !manualPauseRef.current) {
-            try {
-              const state = ytPlayerRef.current.getPlayerState?.();
-              if (state === 2) { // 2 = PAUSED
-                ytPlayerRef.current.playVideo();
-              }
-            } catch {}
+        if (activeEngineRef.current === 'audio' && audioRef.current) {
+          // Native Audio element natively continues playing in background on Android!
+          if (audioRef.current.paused && !manualPauseRef.current) {
+            audioRef.current.play().catch(() => {});
           }
-        }, 120);
+        } else if (ytPlayerRef.current) {
+          setTimeout(() => {
+            if (ytPlayerRef.current && isPlayingRef.current && !manualPauseRef.current) {
+              try {
+                const state = ytPlayerRef.current.getPlayerState?.();
+                if (state === 2) {
+                  ytPlayerRef.current.playVideo();
+                }
+              } catch {}
+            }
+          }, 120);
+        }
       }
     };
 
@@ -179,12 +249,12 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     };
   }, []);
 
-  // Initialize YouTube IFrame Player (Headless Audio Engine)
+  // Initialize YouTube IFrame Player (Secondary Engine Fallback)
   useEffect(() => {
     const initPlayer = () => {
       if (window.YT && window.YT.Player && !ytPlayerRef.current) {
         try {
-          ytPlayerRef.current = new window.YT.Player('nyxora-yt-embed', {
+          ytPlayerRef.current = new window.YT.Player('cadence-yt-embed', {
             height: '240',
             width: '240',
             playerVars: {
@@ -204,13 +274,14 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 try {
                   event.target.setVolume(isMutedRef.current ? 0 : volumeRef.current * 100);
                 } catch {}
-                if (pendingSongRef.current) {
+                if (pendingSongRef.current && activeEngineRef.current === 'yt') {
                   const song = pendingSongRef.current;
                   pendingSongRef.current = null;
-                  playSong(song);
+                  fallbackToYouTube(song);
                 }
               },
               onStateChange: (event: any) => {
+                if (activeEngineRef.current !== 'yt') return;
                 // 1 = PLAYING, 2 = PAUSED, 0 = ENDED
                 if (event.data === 1) {
                   setIsPlaying(true);
@@ -220,7 +291,6 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                     setDuration(dur);
                   }
                 } else if (event.data === 2) {
-                  // If pause was caused by tab switch or screen lock (user did NOT click pause):
                   if ((document.hidden || !document.hasFocus()) && !manualPauseRef.current && currentSongRef.current) {
                     setTimeout(() => {
                       if (!manualPauseRef.current && currentSongRef.current && ytPlayerRef.current) {
@@ -239,10 +309,12 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
               },
               onError: (event: any) => {
                 console.warn('YouTube Player notice (code:', event.data, ')');
-                setIsPlaying(false);
-                setTimeout(() => {
-                  playNext();
-                }, 1500);
+                if (activeEngineRef.current === 'yt') {
+                  setIsPlaying(false);
+                  setTimeout(() => {
+                    playNext();
+                  }, 1500);
+                }
               },
             },
           });
@@ -273,10 +345,10 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return () => {};
   }, []);
 
-  // Real-time progress interval timer while playing
+  // Real-time progress interval timer while playing on YouTube fallback
   useEffect(() => {
     let timer: any = null;
-    if (isPlaying) {
+    if (isPlaying && activeEngineRef.current === 'yt') {
       timer = setInterval(() => {
         if (ytPlayerRef.current && isYtReadyRef.current) {
           try {
@@ -299,21 +371,25 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   // Persist storage
   useEffect(() => {
-    localStorage.setItem('nyxora_history', JSON.stringify(history.slice(0, 50)));
+    localStorage.setItem('cadence_history', JSON.stringify(history.slice(0, 50)));
   }, [history]);
 
   useEffect(() => {
-    localStorage.setItem('nyxora_liked', JSON.stringify(likedSongs));
+    localStorage.setItem('cadence_liked', JSON.stringify(likedSongs));
   }, [likedSongs]);
 
   useEffect(() => {
-    localStorage.setItem('nyxora_playlists', JSON.stringify(playlists));
+    localStorage.setItem('cadence_playlists', JSON.stringify(playlists));
   }, [playlists]);
 
   // Handle Song Ended (Repeat, Continuous Autoplay)
   const handleSongEnded = () => {
     if (repeatModeRef.current === 'one' && currentSongRef.current) {
-      if (ytPlayerRef.current?.seekTo) {
+      if (activeEngineRef.current === 'audio' && audioRef.current) {
+        audioRef.current.currentTime = 0;
+        audioRef.current.play().catch(() => {});
+        setIsPlaying(true);
+      } else if (ytPlayerRef.current?.seekTo) {
         ytPlayerRef.current.seekTo(0);
         ytPlayerRef.current.playVideo();
         setIsPlaying(true);
@@ -324,8 +400,83 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     playNext();
   };
 
-  // Play Song function
-  const playSong = (song: SongItem, newQueue?: SongItem[]) => {
+  // Playback Fallback to YouTube Iframe
+  const fallbackToYouTube = (song: SongItem) => {
+    activeEngineRef.current = 'yt';
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.removeAttribute('src');
+    }
+    if (ytPlayerRef.current && isYtReadyRef.current && typeof ytPlayerRef.current.loadVideoById === 'function') {
+      try {
+        ytPlayerRef.current.loadVideoById(song.id);
+        ytPlayerRef.current.playVideo();
+        setIsPlaying(true);
+      } catch (err) {
+        console.warn('Error loading video in YT Player:', err);
+      }
+    } else {
+      pendingSongRef.current = song;
+    }
+    setupMediaSession(song);
+  };
+
+  // Setup OS Lockscreen / Media Notification controls (MediaSession API)
+  const setupMediaSession = (song: SongItem) => {
+    if (!('mediaSession' in navigator)) return;
+
+    try {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: song.title,
+        artist: song.artists?.map((a) => a.name).join(', ') || 'Cadence Music',
+        album: 'Cadence High-Fidelity',
+        artwork: [
+          {
+            src: song.thumbnailUrl || `https://i.ytimg.com/vi/${song.id}/hqdefault.jpg`,
+            sizes: '512x512',
+            type: 'image/jpeg',
+          },
+        ],
+      });
+
+      navigator.mediaSession.setActionHandler('play', () => {
+        manualPauseRef.current = false;
+        if (activeEngineRef.current === 'audio' && audioRef.current) {
+          audioRef.current.play().catch(() => {});
+        } else {
+          ytPlayerRef.current?.playVideo?.();
+        }
+        setIsPlaying(true);
+      });
+
+      navigator.mediaSession.setActionHandler('pause', () => {
+        manualPauseRef.current = true;
+        if (activeEngineRef.current === 'audio' && audioRef.current) {
+          audioRef.current.pause();
+        } else {
+          ytPlayerRef.current?.pauseVideo?.();
+        }
+        setIsPlaying(false);
+      });
+
+      navigator.mediaSession.setActionHandler('previoustrack', () => {
+        playPrevious();
+      });
+
+      navigator.mediaSession.setActionHandler('nexttrack', () => {
+        playNext();
+      });
+
+      navigator.mediaSession.setActionHandler('seekto', (details) => {
+        if (details.seekTime !== undefined) {
+          seekTo(details.seekTime);
+        }
+      });
+    } catch {}
+  };
+
+  // Play Song function (Native HTML5 Audio first for continuous background playback, YT iframe fallback)
+  const playSong = async (song: SongItem, newQueue?: SongItem[]) => {
     manualPauseRef.current = false;
     setCurrentSong(song);
     setCurrentTime(0);
@@ -347,18 +498,50 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     // Add to History
     setHistory((prev) => [song, ...prev.filter((s) => s.id !== song.id)].slice(0, 50));
 
-    // Play using YouTube Engine
-    if (ytPlayerRef.current && isYtReadyRef.current && typeof ytPlayerRef.current.loadVideoById === 'function') {
-      try {
-        ytPlayerRef.current.loadVideoById(song.id);
-        ytPlayerRef.current.playVideo();
-        setIsPlaying(true);
-      } catch (err) {
-        console.warn('Error loading video in YT Player:', err);
+    // Pause YouTube Player if it was playing
+    try {
+      if (ytPlayerRef.current?.pauseVideo) {
+        ytPlayerRef.current.pauseVideo();
       }
-    } else {
-      pendingSongRef.current = song;
+    } catch {}
+
+    const baseUrl = getApiBaseUrl();
+    activeEngineRef.current = 'audio';
+
+    if (audioRef.current) {
+      // 1. Try resolving direct unthrottled CDN stream URL first
+      try {
+        const res = await apiFetch(`/api/stream-url/${song.id}`);
+        const data = await res.json();
+        if (data.url && audioRef.current && currentSongRef.current?.id === song.id) {
+          audioRef.current.src = data.url;
+          audioRef.current.volume = isMutedRef.current ? 0 : volumeRef.current;
+          await audioRef.current.play();
+          setIsPlaying(true);
+          setupMediaSession(song);
+          return;
+        }
+      } catch {
+        // Fall through to backend stream proxy
+      }
+
+      // 2. Try proxy audio stream directly from backend
+      try {
+        if (audioRef.current && currentSongRef.current?.id === song.id) {
+          audioRef.current.src = `${baseUrl}/api/stream/${song.id}`;
+          audioRef.current.volume = isMutedRef.current ? 0 : volumeRef.current;
+          await audioRef.current.play();
+          setIsPlaying(true);
+          setupMediaSession(song);
+          return;
+        }
+      } catch {
+        // Fall through to YouTube Iframe
+      }
     }
+
+    // 3. Fallback to YouTube IFrame engine if native audio was unavailable
+    fallbackToYouTube(song);
 
     // Prefetch next songs for continuous autoplay if queue is running low
     if (queueRef.current.length < 5) {
@@ -379,69 +562,27 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const togglePlayPause = () => {
     if (!currentSong) return;
-    if (!ytPlayerRef.current || !isYtReadyRef.current) return;
 
-    try {
-      if (isPlaying) {
-        manualPauseRef.current = true;
+    if (isPlaying) {
+      manualPauseRef.current = true;
+      if (activeEngineRef.current === 'audio' && audioRef.current) {
+        audioRef.current.pause();
+      } else if (ytPlayerRef.current?.pauseVideo) {
         ytPlayerRef.current.pauseVideo();
-        setIsPlaying(false);
-      } else {
-        manualPauseRef.current = false;
-        ytPlayerRef.current.playVideo();
-        setIsPlaying(true);
       }
-    } catch (err) {
-      console.warn('togglePlayPause error:', err);
+      setIsPlaying(false);
+    } else {
+      manualPauseRef.current = false;
+      if (activeEngineRef.current === 'audio' && audioRef.current && audioRef.current.src) {
+        audioRef.current.play().catch(() => {});
+      } else if (ytPlayerRef.current?.playVideo) {
+        ytPlayerRef.current.playVideo();
+      }
+      setIsPlaying(true);
     }
   };
 
-  // MediaSession API for OS lock screen controls & permanent background audio playback
-  useEffect(() => {
-    if (!('mediaSession' in navigator) || !currentSong) return;
-
-    try {
-      navigator.mediaSession.metadata = new MediaMetadata({
-        title: currentSong.title,
-        artist: currentSong.artists?.map((a) => a.name).join(', ') || 'Nyxora Music',
-        album: 'Nyxora High-Fidelity',
-        artwork: [
-          {
-            src: currentSong.thumbnailUrl || `https://i.ytimg.com/vi/${currentSong.id}/hqdefault.jpg`,
-            sizes: '512x512',
-            type: 'image/jpeg',
-          },
-        ],
-      });
-
-      navigator.mediaSession.setActionHandler('play', () => {
-        manualPauseRef.current = false;
-        ytPlayerRef.current?.playVideo();
-        setIsPlaying(true);
-      });
-
-      navigator.mediaSession.setActionHandler('pause', () => {
-        manualPauseRef.current = true;
-        ytPlayerRef.current?.pauseVideo();
-        setIsPlaying(false);
-      });
-
-      navigator.mediaSession.setActionHandler('previoustrack', () => {
-        playPrevious();
-      });
-
-      navigator.mediaSession.setActionHandler('nexttrack', () => {
-        playNext();
-      });
-
-      navigator.mediaSession.setActionHandler('seekto', (details) => {
-        if (details.seekTime !== undefined) {
-          seekTo(details.seekTime);
-        }
-      });
-    } catch {}
-  }, [currentSong]);
-
+  // Sync mediaSession playback state
   useEffect(() => {
     if ('mediaSession' in navigator) {
       navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
@@ -450,7 +591,11 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const seekTo = (time: number) => {
     setCurrentTime(time);
-    if (ytPlayerRef.current && typeof ytPlayerRef.current.seekTo === 'function') {
+    if (activeEngineRef.current === 'audio' && audioRef.current && audioRef.current.src) {
+      try {
+        audioRef.current.currentTime = time;
+      } catch {}
+    } else if (ytPlayerRef.current && typeof ytPlayerRef.current.seekTo === 'function') {
       try {
         ytPlayerRef.current.seekTo(time, true);
       } catch {}
@@ -526,6 +671,10 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const setVolumeLevel = (val: number) => {
     setVolume(val);
     setIsMuted(val === 0);
+    if (audioRef.current) {
+      audioRef.current.volume = val;
+      audioRef.current.muted = val === 0;
+    }
     if (ytPlayerRef.current && typeof ytPlayerRef.current.setVolume === 'function') {
       try {
         ytPlayerRef.current.setVolume(val * 100);
@@ -539,19 +688,23 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   const toggleMute = () => {
-    if (!ytPlayerRef.current) return;
-    if (isMuted) {
-      try {
-        ytPlayerRef.current.unMute();
-        ytPlayerRef.current.setVolume(volume * 100);
-        setIsMuted(false);
-      } catch {}
-    } else {
-      try {
-        ytPlayerRef.current.mute();
-        setIsMuted(true);
-      } catch {}
-    }
+    setIsMuted((prev) => {
+      const next = !prev;
+      if (audioRef.current) {
+        audioRef.current.muted = next;
+        audioRef.current.volume = next ? 0 : volume;
+      }
+      if (ytPlayerRef.current) {
+        try {
+          if (next) ytPlayerRef.current.mute();
+          else {
+            ytPlayerRef.current.unMute();
+            ytPlayerRef.current.setVolume(volume * 100);
+          }
+        } catch {}
+      }
+      return next;
+    });
   };
 
   const toggleLikeSong = (song: SongItem) => {
@@ -601,58 +754,49 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   const clearQueue = () => {
-    const current = currentSongRef.current;
-    setQueue(current ? [current] : []);
+    setQueue([]);
     showToast('Queue cleared');
   };
 
   const shuffleQueue = () => {
     setQueue((prev) => {
-      if (prev.length <= 1) return prev;
-      const current = currentSongRef.current;
-      if (current) {
-        const others = prev.filter((s) => s.id !== current.id);
-        const shuffled = [...others].sort(() => Math.random() - 0.5);
-        return [current, ...shuffled];
+      const array = [...prev];
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
       }
-      return [...prev].sort(() => Math.random() - 0.5);
+      return array;
     });
-    showToast('Play queue shuffled!');
+    showToast('Queue shuffled');
   };
 
   const reorderQueue = (sourceIndex: number, destinationIndex: number) => {
-    if (sourceIndex === destinationIndex) return;
     setQueue((prev) => {
-      const updated = [...prev];
-      const [movedItem] = updated.splice(sourceIndex, 1);
-      updated.splice(destinationIndex, 0, movedItem);
-      return updated;
+      const result = Array.from(prev);
+      const [removed] = result.splice(sourceIndex, 1);
+      result.splice(destinationIndex, 0, removed);
+      return result;
     });
   };
 
   // Playlist Operations
-  const createPlaylist = (name: string, description: string = '') => {
+  const createPlaylist = (name: string, description?: string): string => {
     const newId = `playlist-${Date.now()}`;
     const newPl: Playlist = {
       id: newId,
       name: name.trim() || 'My Playlist',
-      description: description.trim(),
+      description: description?.trim() || '',
       createdAt: Date.now(),
       songs: [],
     };
-    setPlaylists((prev) => [newPl, ...prev]);
+    setPlaylists((prev) => [...prev, newPl]);
     showToast(`Created playlist "${newPl.name}"`);
     return newId;
   };
 
   const deletePlaylist = (playlistId: string) => {
-    setPlaylists((prev) => {
-      const target = prev.find((p) => p.id === playlistId);
-      if (target) {
-        showToast(`Deleted playlist "${target.name}"`);
-      }
-      return prev.filter((p) => p.id !== playlistId);
-    });
+    setPlaylists((prev) => prev.filter((p) => p.id !== playlistId));
+    showToast('Playlist deleted');
   };
 
   const addSongToPlaylist = (playlistId: string, song: SongItem) => {
@@ -660,15 +804,11 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       prev.map((pl) => {
         if (pl.id !== playlistId) return pl;
         if (pl.songs.some((s) => s.id === song.id)) {
-          showToast(`"${song.title}" is already in "${pl.name}"`);
+          showToast(`Song already in "${pl.name}"`);
           return pl;
         }
         showToast(`Added to "${pl.name}"`);
-        return {
-          ...pl,
-          coverUrl: pl.coverUrl || song.thumbnailUrl,
-          songs: [...pl.songs, song],
-        };
+        return { ...pl, songs: [...pl.songs, song] };
       })
     );
   };
@@ -677,13 +817,10 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setPlaylists((prev) =>
       prev.map((pl) => {
         if (pl.id !== playlistId) return pl;
-        return {
-          ...pl,
-          songs: pl.songs.filter((s) => s.id !== songId),
-        };
+        return { ...pl, songs: pl.songs.filter((s) => s.id !== songId) };
       })
     );
-    showToast('Removed track from playlist');
+    showToast('Removed from playlist');
   };
 
   const playPlaylist = (playlistId: string, startIndex: number = 0, shuffle: boolean = false) => {
@@ -695,8 +832,12 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     let songList = [...pl.songs];
     if (shuffle) {
-      songList = songList.sort(() => Math.random() - 0.5);
+      for (let i = songList.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [songList[i], songList[j]] = [songList[j], songList[i]];
+      }
     }
+
     const startSong = songList[startIndex] || songList[0];
     playSong(startSong, songList);
     showToast(`Playing playlist "${pl.name}"`);
@@ -718,6 +859,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         likedSongs,
         toastMessage,
         playlists,
+
         playSong,
         togglePlayPause,
         seekTo,
@@ -729,26 +871,33 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         toggleMute,
         toggleLikeSong,
         isLiked,
+
         addToQueue,
         playNextInQueue,
         removeFromQueue,
         clearQueue,
         shuffleQueue,
         reorderQueue,
+
         createPlaylist,
         deletePlaylist,
         addSongToPlaylist,
         removeSongFromPlaylist,
         playPlaylist,
+
         targetSongForPlaylist,
         setTargetSongForPlaylist,
         showToast,
       }}
     >
       {children}
-      {/* Headless YouTube Player Engine for authentic, unblocked browser streaming */}
+
+      {/* Dedicated Native Audio Player for continuous background audio (like Spotify) */}
+      <audio ref={audioRef} playsInline preload="auto" style={{ display: 'none' }} />
+
+      {/* Headless YouTube Iframe Engine (Secondary Fallback) */}
       <div
-        id="nyxora-yt-player-container"
+        id="cadence-yt-player-container"
         style={{
           position: 'fixed',
           bottom: 0,
@@ -763,7 +912,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         }}
         aria-hidden="true"
       >
-        <div id="nyxora-yt-embed" />
+        <div id="cadence-yt-embed" />
       </div>
     </PlayerContext.Provider>
   );

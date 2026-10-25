@@ -20,10 +20,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   return (
     <nav className="navbar">
       <div className="nav-brand" onClick={() => onSelectTab('home')}>
-        <div className="nav-brand-icon">
-          <Radio size={18} />
-        </div>
-        <span>Nyxora</span>
+        <img src="/Logo1.jpeg" alt="Cadence Logo" className="nav-brand-img" />
+        <span>Cadence</span>
       </div>
 
       <ul className="nav-links">

@@ -18,7 +18,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
             <Settings size={22} color="var(--accent-pink)" />
-            <h2 style={{ fontSize: '1.4rem', fontWeight: 800 }}>Nyxora Settings</h2>
+            <h2 style={{ fontSize: '1.4rem', fontWeight: 800 }}>Cadence Settings</h2>
           </div>
           <button className="icon-btn" onClick={onClose} aria-label="Close settings">
             <X size={20} />
@@ -42,7 +42,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
               <Info size={20} color="#ff7a18" />
               <div>
-                <div style={{ fontWeight: 600 }}>About Nyxora</div>
+                <div style={{ fontWeight: 600 }}>About Cadence</div>
                 <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: 1.5, marginTop: '0.2rem' }}>
                   A modern, high-fidelity music streaming player. Works seamlessly as a Progressive Web App in any browser and as a native Android APK.
                 </div>
@@ -52,7 +52,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
 
         <div style={{ textAlign: 'center', fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
-          Nyxora • High-Fidelity Music Experience
+          Cadence • High-Fidelity Music Experience
         </div>
       </div>
     </div>

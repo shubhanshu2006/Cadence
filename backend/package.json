@@ -1,7 +1,7 @@
 {
-  "name": "nyxora-backend",
+  "name": "cadence-backend",
   "version": "1.0.0",
-  "description": "Nyxora Web Backend in TypeScript - YouTube Music, AI Radio, and Lyrics API",
+  "description": "Cadence Web Backend in TypeScript - YouTube Music, AI Radio, and Lyrics API",
   "main": "dist/server.js",
   "type": "module",
   "scripts": {

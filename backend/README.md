@@ -1,6 +1,6 @@
-# 🎵 Nyxora Web Backend (TypeScript)
+# 🎵 Cadence Web Backend (TypeScript)
 
-The TypeScript/Node.js backend service for Nyxora. Provides YouTube Music stream resolution, continuous autoplay radio recommendations, synchronized lyrics, Open-Meteo weather context, and Google Gemini-powered AI Radio Host commentary.
+The TypeScript/Node.js backend service for Cadence. Provides YouTube Music stream resolution, continuous autoplay radio recommendations, synchronized lyrics, Open-Meteo weather context, and Google Gemini-powered AI Radio Host commentary.
 
 ## 🚀 Getting Started
 
