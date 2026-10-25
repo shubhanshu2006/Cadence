@@ -1,41 +1,45 @@
 /**
  * Cross-platform API utility for Nyxora.
- * Seamlessly handles:
- * - Web Dev: uses relative paths proxied by Vite to http://localhost:5000
- * - Web Production: uses relative path or VITE_API_BASE_URL
- * - Mobile APK (Capacitor): uses configured backend URL or saved custom host
+ * Seamlessly connects:
+ * - Native Android APK -> https://nyxora-sit3.onrender.com
+ * - Vercel Production Web -> https://nyxora-sit3.onrender.com
+ * - Local Vite Dev -> Proxies to localhost:5000 or custom host
  */
 
 export const isNativePlatform = (): boolean => {
   return typeof window !== 'undefined' && Boolean((window as any).Capacitor?.isNativePlatform?.());
 };
 
-const getStoredBaseUrl = (): string => {
-  try {
-    return localStorage.getItem('nyxora_api_base_url') || localStorage.getItem('tunespark_api_base_url') || '';
-  } catch {
-    return '';
-  }
-};
+const DEFAULT_BACKEND_URL = 'https://nyxora-sit3.onrender.com';
 
 export const getApiBaseUrl = (): string => {
-  const envUrl = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim();
-  const storedUrl = getStoredBaseUrl().trim();
+  const envUrl = (
+    import.meta.env.VITE_API_BASE_URL ||
+    import.meta.env.VITE_API_URL ||
+    ''
+  ).trim();
 
-  if (storedUrl) return storedUrl;
-  if (envUrl) return envUrl;
+  if (envUrl) return envUrl.replace(/\/+$/, '');
 
-  // In native Android APK without an env, 10.0.2.2 is the Android Emulator alias to host machine
+  // In native Android APK, always target the live Render backend
   if (isNativePlatform()) {
-    return 'http://10.0.2.2:5000';
+    return DEFAULT_BACKEND_URL;
   }
 
-  // In browser, empty string means relative path (proxied by Vite in dev)
-  return '';
+  // In local browser development without env, relative path proxies to localhost:5000 via Vite
+  if (
+    typeof window !== 'undefined' &&
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+  ) {
+    return '';
+  }
+
+  // Deployed web default fallback
+  return DEFAULT_BACKEND_URL;
 };
 
 export function apiFetch(endpoint: string, init?: RequestInit): Promise<Response> {
-  const baseUrl = getApiBaseUrl().replace(/\/+$/, '');
+  const baseUrl = getApiBaseUrl();
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
   const url = endpoint.startsWith('http') ? endpoint : `${baseUrl}${cleanEndpoint}`;
 

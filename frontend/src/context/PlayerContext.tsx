@@ -87,7 +87,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [queue, setQueue] = useState<SongItem[]>([]);
   const [history, setHistory] = useState<SongItem[]>(() => {
     try {
-      const saved = localStorage.getItem('nyxora_history') || localStorage.getItem('tunespark_history');
+      const saved = localStorage.getItem('nyxora_history');
       return saved ? JSON.parse(saved) : [];
     } catch {
       return [];
@@ -96,7 +96,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const [likedSongs, setLikedSongs] = useState<SongItem[]>(() => {
     try {
-      const saved = localStorage.getItem('nyxora_liked') || localStorage.getItem('tunespark_liked');
+      const saved = localStorage.getItem('nyxora_liked');
       return saved ? JSON.parse(saved) : [];
     } catch {
       return [];
@@ -105,7 +105,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const [playlists, setPlaylists] = useState<Playlist[]>(() => {
     try {
-      const saved = localStorage.getItem('nyxora_playlists') || localStorage.getItem('tunespark_playlists');
+      const saved = localStorage.getItem('nyxora_playlists');
       if (saved) return JSON.parse(saved);
     } catch {}
     return [

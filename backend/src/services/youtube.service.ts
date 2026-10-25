@@ -317,7 +317,7 @@ export class YouTubeService {
 
   /**
    * Resolve best direct playable audio stream URL.
-   * Matches Tunespark Android's multi-client StreamUrlResolver (ANDROID_VR, TVHTML5_SIMPLY_EMBEDDED_PLAYER, IOS)
+   * Matches Nyxora Android's multi-client StreamUrlResolver (ANDROID_VR, TVHTML5_SIMPLY_EMBEDDED_PLAYER, IOS)
    * which provide direct unthrottled audio streams without cipher signature restrictions.
    */
   static async resolveStreamUrl(videoId: string): Promise<string | null> {
@@ -326,7 +326,7 @@ export class YouTubeService {
       return cached.url;
     }
 
-    // 1. Primary: Direct InnerTube player multi-client resolver (matching Android Tunespark)
+    // 1. Primary: Direct InnerTube player multi-client resolver (matching Android Nyxora)
     const directResult = await this.resolveViaMultiClientPlayer(videoId);
     if (directResult?.url) {
       this.streamCache.set(videoId, { url: directResult.url, expiry: Date.now() + 3600 * 1000 });
@@ -375,11 +375,11 @@ export class YouTubeService {
 
   /**
    * Multi-client InnerTube player endpoint resolver.
-   * Mimics Android Tunespark StreamUrlResolver profiles.
+   * Mimics Android Nyxora StreamUrlResolver profiles.
    */
   private static async resolveViaMultiClientPlayer(videoId: string): Promise<{ url: string; userAgent: string } | null> {
     const clients = [
-      // 1. Android VR (1.43.32) - Primary Tunespark Android client
+      // 1. Android VR (1.43.32) - Primary Nyxora Android client
       {
         id: '28',
         version: '1.43.32',

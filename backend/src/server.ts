@@ -89,7 +89,7 @@ app.get('/api/radio/next', async (req: Request, res: Response) => {
   }
 });
 
-// Direct stream URL resolver endpoint (matching Android Tunespark StreamUrlResolver)
+// Direct stream URL resolver endpoint (matching Android Nyxora StreamUrlResolver)
 app.get('/api/stream-url/:videoId', async (req: Request, res: Response) => {
   const { videoId } = req.params;
   try {
