@@ -520,6 +520,56 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   }, [currentTime, duration]);
 
+  // Synchronize with native Android Media Notification Service
+  useEffect(() => {
+    if (typeof window !== 'undefined' && (window as any).AndroidMediaBridge) {
+      if (currentSong) {
+        try {
+          (window as any).AndroidMediaBridge.updateTrack(
+            currentSong.title,
+            currentSong.artists?.map((a) => a.name).join(', ') || 'Cadence Music',
+            currentSong.thumbnailUrl || `https://i.ytimg.com/vi/${currentSong.id}/hqdefault.jpg`,
+            isPlaying
+          );
+        } catch (e) {
+          console.warn('AndroidMediaBridge error:', e);
+        }
+      } else {
+        try {
+          (window as any).AndroidMediaBridge.stopNotification();
+        } catch {}
+      }
+    }
+  }, [currentSong, isPlaying]);
+
+  // Expose global remote control handlers for Android Native Notification Buttons
+  useEffect(() => {
+    (window as any).CadenceRemoteControl = {
+      play: () => {
+        manualPauseRef.current = false;
+        ytPlayerRef.current?.playVideo?.();
+        setIsPlaying(true);
+        silentAudioRef.current?.play().catch(() => {});
+      },
+      pause: () => {
+        manualPauseRef.current = true;
+        ytPlayerRef.current?.pauseVideo?.();
+        setIsPlaying(false);
+        silentAudioRef.current?.pause();
+      },
+      next: () => {
+        playNext();
+      },
+      prev: () => {
+        playPrevious();
+      },
+    };
+
+    return () => {
+      delete (window as any).CadenceRemoteControl;
+    };
+  }, []);
+
   const seekTo = (time: number) => {
     setCurrentTime(time);
     if (ytPlayerRef.current && typeof ytPlayerRef.current.seekTo === 'function') {
