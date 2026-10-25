@@ -1,10 +1,10 @@
 import React from 'react';
-import { Radio, Search, Compass, Heart, Settings, Library, ListMusic } from 'lucide-react';
+import { Radio, Search, Heart, Settings, Library, ListMusic } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
 
 interface NavbarProps {
-  currentTab: 'home' | 'search' | 'discover' | 'liked' | 'playlists';
-  onSelectTab: (tab: 'home' | 'search' | 'discover' | 'liked' | 'playlists') => void;
+  currentTab: 'home' | 'search' | 'liked' | 'playlists';
+  onSelectTab: (tab: 'home' | 'search' | 'liked' | 'playlists') => void;
   onOpenSettings: () => void;
   onOpenQueue?: () => void;
 }
@@ -47,15 +47,6 @@ export const Navbar: React.FC<NavbarProps> = ({
         </li>
         <li>
           <button
-            className={`nav-btn ${currentTab === 'discover' ? 'active' : ''}`}
-            onClick={() => onSelectTab('discover')}
-          >
-            <Compass size={16} />
-            <span>Discover</span>
-          </button>
-        </li>
-        <li>
-          <button
             className={`nav-btn ${currentTab === 'liked' ? 'active' : ''}`}
             onClick={() => onSelectTab('liked')}
           >
@@ -78,7 +69,6 @@ export const Navbar: React.FC<NavbarProps> = ({
       </ul>
 
       <div className="nav-right">
-
         {/* Play Queue button in top navigation */}
         {onOpenQueue && (
           <button
@@ -124,14 +114,6 @@ export const MobileBottomNav: React.FC<Pick<NavbarProps, 'currentTab' | 'onSelec
       >
         <Search size={20} />
         <span>Search</span>
-      </button>
-
-      <button
-        className={`mobile-nav-btn ${currentTab === 'discover' ? 'active' : ''}`}
-        onClick={() => onSelectTab('discover')}
-      >
-        <Compass size={20} />
-        <span>Discover</span>
       </button>
 
       <button

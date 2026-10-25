@@ -9,14 +9,13 @@ import { SettingsModal } from './components/SettingsModal';
 import { AddToPlaylistModal } from './components/AddToPlaylistModal';
 import { HomeView } from './views/HomeView';
 import { SearchView } from './views/SearchView';
-import { DiscoverView } from './views/DiscoverView';
 import { LikedView } from './views/LikedView';
 import { PlaylistsView } from './views/PlaylistsView';
 import { HomeSection } from './types';
 import { apiFetch } from './utils/api';
 
 const MainApp: React.FC = () => {
-  const [currentTab, setCurrentTab] = useState<'home' | 'search' | 'discover' | 'liked' | 'playlists'>('home');
+  const [currentTab, setCurrentTab] = useState<'home' | 'search' | 'liked' | 'playlists'>('home');
   const [homeSections, setHomeSections] = useState<HomeSection[]>([]);
   const [isLoadingHome, setIsLoadingHome] = useState<boolean>(true);
 
@@ -67,8 +66,6 @@ const MainApp: React.FC = () => {
         )}
 
         {currentTab === 'search' && <SearchView />}
-
-        {currentTab === 'discover' && <DiscoverView />}
 
         {currentTab === 'liked' && <LikedView />}
 
