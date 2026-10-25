@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { SongItem, Playlist } from '../types';
-import { apiFetch } from '../utils/api';
+import { apiFetch, getApiBaseUrl } from '../utils/api';
 
 declare global {
   interface Window {
@@ -180,18 +180,18 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   // Background playback preservation
   useEffect(() => {
     const handleBackgroundPreservation = () => {
-      if (document.hidden && isPlayingRef.current && !manualPauseRef.current) {
-        setTimeout(() => {
-          if (ytPlayerRef.current && isPlayingRef.current && !manualPauseRef.current) {
-            try {
-              const state = ytPlayerRef.current.getPlayerState?.();
-              if (state === 2) {
-                ytPlayerRef.current.playVideo();
-              }
-            } catch {}
-          }
-        }, 120);
-      }
+      if (manualPauseRef.current || !currentSongRef.current || !isPlayingRef.current) return;
+
+      setTimeout(() => {
+        if (ytPlayerRef.current && isPlayingRef.current && !manualPauseRef.current) {
+          try {
+            const state = ytPlayerRef.current.getPlayerState?.();
+            if (state === 2 || state === 5) {
+              ytPlayerRef.current.playVideo();
+            }
+          } catch {}
+        }
+      }, document.hidden ? 120 : 250);
     };
 
     document.addEventListener('visibilitychange', handleBackgroundPreservation);
@@ -377,8 +377,18 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     // Add to History
     setHistory((prev) => [song, ...prev.filter((s) => s.id !== song.id)].slice(0, 50));
 
-    // Play using YouTube Engine directly
-    if (ytPlayerRef.current && isYtReadyRef.current && typeof ytPlayerRef.current.loadVideoById === 'function') {
+    const nativeBridge = typeof window !== 'undefined' ? (window as any).AndroidMediaBridge : null;
+    if (nativeBridge?.playTrack) {
+      nativeBridge.playTrack(
+        song.id,
+        song.title,
+        song.artists?.map((a) => a.name).join(', ') || 'Cadence Music',
+        song.thumbnailUrl || `https://i.ytimg.com/vi/${song.id}/hqdefault.jpg`,
+        getApiBaseUrl(),
+        true
+      );
+      setIsPlaying(true);
+    } else if (ytPlayerRef.current && isYtReadyRef.current && typeof ytPlayerRef.current.loadVideoById === 'function') {
       try {
         ytPlayerRef.current.loadVideoById(song.id);
         ytPlayerRef.current.playVideo();
@@ -409,9 +419,19 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const togglePlayPause = () => {
     if (!currentSong) return;
-    if (!ytPlayerRef.current || !isYtReadyRef.current) return;
 
     try {
+      const nativeBridge = typeof window !== 'undefined' ? (window as any).AndroidMediaBridge : null;
+      if (nativeBridge?.control) {
+        nativeBridge.control(isPlaying
+          ? 'com.cadence.web.ACTION_PAUSE'
+          : 'com.cadence.web.ACTION_PLAY');
+        manualPauseRef.current = isPlaying;
+        setIsPlaying(!isPlaying);
+        return;
+      }
+
+      if (!ytPlayerRef.current || !isYtReadyRef.current) return;
       if (isPlaying) {
         manualPauseRef.current = true;
         ytPlayerRef.current.pauseVideo();
@@ -448,14 +468,24 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
       navigator.mediaSession.setActionHandler('play', () => {
         manualPauseRef.current = false;
-        ytPlayerRef.current?.playVideo?.();
+        const nativeBridge = typeof window !== 'undefined' ? (window as any).AndroidMediaBridge : null;
+        if (nativeBridge?.control) {
+          nativeBridge.control('com.cadence.web.ACTION_PLAY');
+        } else {
+          ytPlayerRef.current?.playVideo?.();
+        }
         setIsPlaying(true);
         silentAudioRef.current?.play().catch(() => {});
       });
 
       navigator.mediaSession.setActionHandler('pause', () => {
         manualPauseRef.current = true;
-        ytPlayerRef.current?.pauseVideo?.();
+        const nativeBridge = typeof window !== 'undefined' ? (window as any).AndroidMediaBridge : null;
+        if (nativeBridge?.control) {
+          nativeBridge.control('com.cadence.web.ACTION_PAUSE');
+        } else {
+          ytPlayerRef.current?.pauseVideo?.();
+        }
         setIsPlaying(false);
         silentAudioRef.current?.pause();
       });
@@ -498,7 +528,8 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         silentAudioRef.current.pause();
       }
     }
-  }, [isPlaying]);
+
+  }, [isPlaying, isMuted, volume]);
 
   // Synchronize dynamic seekbar in Android notification shade
   useEffect(() => {
@@ -520,40 +551,28 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   }, [currentTime, duration]);
 
-  // Synchronize with native Android Media Notification Service
-  useEffect(() => {
-    if (typeof window !== 'undefined' && (window as any).AndroidMediaBridge) {
-      if (currentSong) {
-        try {
-          (window as any).AndroidMediaBridge.updateTrack(
-            currentSong.title,
-            currentSong.artists?.map((a) => a.name).join(', ') || 'Cadence Music',
-            currentSong.thumbnailUrl || `https://i.ytimg.com/vi/${currentSong.id}/hqdefault.jpg`,
-            isPlaying
-          );
-        } catch (e) {
-          console.warn('AndroidMediaBridge error:', e);
-        }
-      } else {
-        try {
-          (window as any).AndroidMediaBridge.stopNotification();
-        } catch {}
-      }
-    }
-  }, [currentSong, isPlaying]);
-
   // Expose global remote control handlers for Android Native Notification Buttons
   useEffect(() => {
     (window as any).CadenceRemoteControl = {
       play: () => {
         manualPauseRef.current = false;
-        ytPlayerRef.current?.playVideo?.();
+        const nativeBridge = typeof window !== 'undefined' ? (window as any).AndroidMediaBridge : null;
+        if (nativeBridge?.control) {
+          nativeBridge.control('com.cadence.web.ACTION_PLAY');
+        } else {
+          ytPlayerRef.current?.playVideo?.();
+        }
         setIsPlaying(true);
         silentAudioRef.current?.play().catch(() => {});
       },
       pause: () => {
         manualPauseRef.current = true;
-        ytPlayerRef.current?.pauseVideo?.();
+        const nativeBridge = typeof window !== 'undefined' ? (window as any).AndroidMediaBridge : null;
+        if (nativeBridge?.control) {
+          nativeBridge.control('com.cadence.web.ACTION_PAUSE');
+        } else {
+          ytPlayerRef.current?.pauseVideo?.();
+        }
         setIsPlaying(false);
         silentAudioRef.current?.pause();
       },
@@ -567,6 +586,24 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     return () => {
       delete (window as any).CadenceRemoteControl;
+    };
+  }, []);
+
+  useEffect(() => {
+    (window as any).CadenceNativeProgress = (
+      positionMs: number,
+      durationMs: number,
+      playing: boolean
+    ) => {
+      if (Number.isFinite(positionMs)) setCurrentTime(Math.max(0, positionMs / 1000));
+      if (Number.isFinite(durationMs) && durationMs > 0) {
+        setDuration(durationMs / 1000);
+      }
+      setIsPlaying(playing);
+    };
+
+    return () => {
+      delete (window as any).CadenceNativeProgress;
     };
   }, []);
 

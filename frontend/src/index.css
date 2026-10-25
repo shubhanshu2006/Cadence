@@ -1959,7 +1959,7 @@ body {
     background: rgba(22, 14, 30, 0.96);
     backdrop-filter: blur(28px);
     -webkit-backdrop-filter: blur(28px);
-    z-index: 90;
+    z-index: 110;
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
@@ -2041,7 +2041,7 @@ body {
     top: 0;
     left: 0;
     right: 0;
-    height: 3px;
+    height: 4px;
     padding: 0;
     margin: 0;
     width: 100%;
@@ -2052,7 +2052,7 @@ body {
   }
 
   .player-bar .progress-container .progress-bar-wrap {
-    height: 3px;
+    height: 4px;
     border-radius: 0;
     background: rgba(255, 255, 255, 0.15);
   }

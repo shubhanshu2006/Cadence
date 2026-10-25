@@ -48,12 +48,15 @@ public class MainActivity extends BridgeActivity {
 
     public class AndroidMediaBridge {
         @JavascriptInterface
-        public void updateTrack(String title, String artist, String artworkUrl, boolean isPlaying) {
+        public void playTrack(String videoId, String title, String artist, String artworkUrl,
+                              String backendUrl, boolean isPlaying) {
             Intent intent = new Intent(MainActivity.this, CadenceMediaService.class);
-            intent.setAction(CadenceMediaService.ACTION_UPDATE);
+            intent.setAction(CadenceMediaService.ACTION_PLAY_TRACK);
+            intent.putExtra(CadenceMediaService.EXTRA_VIDEO_ID, videoId);
             intent.putExtra(CadenceMediaService.EXTRA_TITLE, title);
             intent.putExtra(CadenceMediaService.EXTRA_ARTIST, artist);
             intent.putExtra(CadenceMediaService.EXTRA_ARTWORK_URL, artworkUrl);
+            intent.putExtra(CadenceMediaService.EXTRA_BACKEND_URL, backendUrl);
             intent.putExtra(CadenceMediaService.EXTRA_IS_PLAYING, isPlaying);
 
             try {
@@ -68,13 +71,17 @@ public class MainActivity extends BridgeActivity {
         }
 
         @JavascriptInterface
-        public void stopNotification() {
+        public void control(String action) {
             Intent intent = new Intent(MainActivity.this, CadenceMediaService.class);
-            intent.setAction(CadenceMediaService.ACTION_STOP);
+            intent.setAction(action);
             try {
-                startService(intent);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    startForegroundService(intent);
+                } else {
+                    startService(intent);
+                }
             } catch (Exception exception) {
-                Log.e(TAG, "Unable to stop media playback service", exception);
+                Log.e(TAG, "Unable to control media playback service", exception);
             }
         }
     }
@@ -91,6 +98,16 @@ public class MainActivity extends BridgeActivity {
                 } else if (CadenceMediaService.ACTION_PREV.equals(action)) {
                     getBridge().getWebView().evaluateJavascript("window.CadenceRemoteControl && window.CadenceRemoteControl.prev()", null);
                 }
+            }
+        });
+    }
+
+    public void handleNativeProgress(long positionMs, long durationMs, boolean isPlaying) {
+        runOnUiThread(() -> {
+            if (getBridge() != null && getBridge().getWebView() != null) {
+                String script = "window.CadenceNativeProgress && window.CadenceNativeProgress("
+                        + positionMs + "," + durationMs + "," + isPlaying + ")";
+                getBridge().getWebView().evaluateJavascript(script, null);
             }
         });
     }
