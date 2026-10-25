@@ -36,7 +36,9 @@
         </provider>
     </application>
 
-    <!-- Permissions -->
-
+    <!-- Permissions for Continuous Background Audio Playback like Spotify -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
 </manifest>

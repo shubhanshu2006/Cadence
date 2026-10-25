@@ -1,10 +1,10 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace "com.nyxora.web"
+    namespace "com.cadence.web"
     compileSdk rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.nyxora.web"
+        applicationId "com.cadence.web"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
@@ -25,7 +25,7 @@ android {
 
     applicationVariants.all { variant ->
         variant.outputs.all {
-            outputFileName = "Nyxora.apk"
+            outputFileName = "Cadence.apk"
         }
     }
 }

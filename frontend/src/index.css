@@ -166,6 +166,15 @@ body {
   box-shadow: 0 4px 14px var(--accent-glow);
 }
 
+.nav-brand-img {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  object-fit: cover;
+  box-shadow: 0 4px 14px var(--accent-glow);
+  border: 1.5px solid rgba(255, 122, 24, 0.45);
+}
+
 .nav-links {
   display: flex;
   align-items: center;
@@ -354,7 +363,7 @@ body {
   background: rgba(255, 255, 255, 0.14);
 }
 
-/* Speed Dial 3x3 Grid (Signature Nyxora Feature) */
+/* Speed Dial 3x3 Grid (Signature Cadence Feature) */
 .speed-dial-section {
   display: flex;
   flex-direction: column;
@@ -497,78 +506,229 @@ body {
 /* Quick Picks Carousel */
 .quick-picks-row {
   display: flex;
-  gap: 1.25rem;
+  gap: 1.1rem;
   overflow-x: auto;
   padding-bottom: 0.75rem;
-  scrollbar-width: thin;
+  padding-top: 0.25rem;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.quick-picks-row::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 .track-card {
-  min-width: 180px;
-  max-width: 180px;
+  min-width: 175px;
+  max-width: 175px;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.65rem;
   cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.2s ease;
+}
+
+.track-card:active {
+  transform: scale(0.97);
 }
 
 .track-thumb-wrapper {
   position: relative;
   width: 100%;
   aspect-ratio: 1/1;
-  border-radius: var(--radius-md);
+  border-radius: 14px;
   overflow: hidden;
   background: var(--bg-surface-elevated);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  transition: all 0.25s ease;
+}
+
+.track-thumb-wrapper.active-playing-thumb {
+  box-shadow: 0 0 0 2px #ff2a85, 0 4px 22px rgba(255, 42, 133, 0.45);
 }
 
 .track-thumb {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.3s ease;
+  transition: transform 0.35s ease;
 }
 
 .track-card:hover .track-thumb {
   transform: scale(1.05);
 }
 
-.track-overlay-btn {
+/* Soundwave Equalizer Badge */
+.track-now-playing-badge {
   position: absolute;
-  bottom: 10px;
-  right: 10px;
-  width: 44px;
-  height: 44px;
+  bottom: 8px;
+  right: 8px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
-  background: var(--accent-pink);
-  color: white;
+  background: linear-gradient(135deg, #ff7a18, #ff2a85);
+  box-shadow: 0 2px 10px rgba(255, 42, 133, 0.6);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
-  opacity: 0;
-  transform: translateY(8px);
-  transition: all 0.25s ease;
+  z-index: 2;
+  color: white;
 }
 
-.track-card:hover .track-overlay-btn {
-  opacity: 1;
-  transform: translateY(0);
+.soundwave-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 12px;
+}
+
+.soundwave-bars span {
+  width: 3px;
+  background: white;
+  border-radius: 2px;
+  animation: soundWave 0.75s ease-in-out infinite alternate;
+}
+
+.soundwave-bars span:nth-child(1) { height: 40%; animation-delay: 0.1s; }
+.soundwave-bars span:nth-child(2) { height: 100%; animation-delay: 0.35s; }
+.soundwave-bars span:nth-child(3) { height: 65%; animation-delay: 0.2s; }
+
+@keyframes soundWave {
+  0% { height: 25%; }
+  100% { height: 100%; }
+}
+
+/* Desktop Hover Overlay (Only active for mouse pointer) */
+.track-desktop-hover-overlay {
+  display: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .track-desktop-hover-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(2px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+    border-radius: inherit;
+    z-index: 3;
+  }
+
+  .track-card:hover .track-desktop-hover-overlay {
+    opacity: 1;
+  }
+
+  .track-overlay-small-btn {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: rgba(18, 20, 29, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .track-overlay-small-btn:hover {
+    background: #ff2a85;
+    border-color: #ff2a85;
+    transform: scale(1.1);
+  }
+
+  .track-overlay-play-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #ff7a18, #ff2a85);
+    border: none;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(255, 42, 133, 0.5);
+    transition: all 0.2s ease;
+  }
+
+  .track-overlay-play-btn:hover {
+    transform: scale(1.12);
+  }
+}
+
+/* Track Card Info */
+.track-info {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.4rem;
+}
+
+.track-text {
+  flex: 1;
+  min-width: 0;
 }
 
 .track-title {
-  font-size: 0.95rem;
+  font-size: 0.92rem;
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  color: var(--text-main);
+  line-height: 1.25;
+}
+
+.track-card:hover .track-title {
+  color: #ff7a18;
 }
 
 .track-artist {
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   color: var(--text-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  margin-top: 2px;
+}
+
+.track-mobile-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.track-inline-action-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.track-inline-action-btn:hover,
+.track-inline-action-btn:active {
+  color: #ff2a85;
+  background: rgba(255, 42, 133, 0.14);
 }
 
 /* AI Radio Live Commentary Toast / Overlay */
@@ -1300,43 +1460,7 @@ body {
   transform: scale(1.08);
 }
 
-/* Track Overlay Actions (QuickPicks) */
-.track-overlay-actions {
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(2px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.6rem;
-  opacity: 0;
-  transition: all 0.25s ease;
-}
-
-.track-card:hover .track-overlay-actions {
-  opacity: 1;
-}
-
-.track-overlay-small-btn {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.65);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.track-overlay-small-btn:hover {
-  background: #ff2d55;
-  border-color: #ff2d55;
-  transform: scale(1.1);
-}
+/* Quick Picks overlay handled by .track-desktop-hover-overlay */
 
 /* Toast Notification */
 .toast-notification {
@@ -1558,20 +1682,20 @@ body {
   gap: 0.55rem;
   font-family: var(--font-display);
   font-size: 1.05rem;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-main);
-  background: rgba(255, 255, 255, 0.035);
-  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: linear-gradient(135deg, rgba(255, 122, 24, 0.12) 0%, rgba(255, 42, 133, 0.12) 100%);
+  border: 1px solid rgba(255, 122, 24, 0.35);
   padding: 0.65rem 1.45rem;
   border-radius: var(--radius-full);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 20px rgba(255, 42, 133, 0.2), 0 0 25px rgba(255, 122, 24, 0.15);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
 }
 
 .heart-pulse-icon {
   animation: heartPulse 1.6s infinite ease-in-out;
-  filter: drop-shadow(0 0 8px rgba(255, 45, 85, 0.75));
+  filter: drop-shadow(0 0 8px rgba(255, 42, 133, 0.85));
   display: inline-block;
   vertical-align: middle;
 }
@@ -1597,7 +1721,7 @@ body {
 }
 
 .author-name {
-  background: linear-gradient(135deg, #ff2d55 0%, #d946ef 50%, #8b5cf6 100%);
+  background: linear-gradient(135deg, #ff7a18 0%, #ff5277 50%, #ff2a85 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   font-weight: 800;
@@ -1665,28 +1789,28 @@ body {
 
   /* Layout & Spacing */
   .app-container {
-    padding-top: calc(env(safe-area-inset-top, 0px) + 8px);
-    padding-bottom: calc(168px + env(safe-area-inset-bottom, 12px));
+    padding-top: 0;
+    padding-bottom: calc(160px + env(safe-area-inset-bottom, 10px));
     /* Clearance for Floating PlayerBar + Mobile Bottom Nav */
     overflow-x: hidden;
     width: 100%;
   }
 
   .main-content {
-    padding: 1.25rem 1rem;
-    gap: 2rem;
+    padding: 0.65rem 0.85rem 1.25rem 0.85rem;
+    gap: 1.5rem;
     max-width: 100vw;
     overflow-x: hidden;
   }
 
-  /* Top Navbar on Mobile: floating island with margin from top screen edge */
+  /* Top Navbar on Mobile: sleek floating island with lowered top margin */
   .navbar {
-    margin: calc(env(safe-area-inset-top, 0px) + 8px) 12px 0 12px;
-    padding: 0 1rem;
-    height: 56px;
-    border-radius: 18px;
+    margin: calc(env(safe-area-inset-top, 0px) + 3px) 10px 0 10px;
+    padding: 0 0.85rem;
+    height: 50px;
+    border-radius: 16px;
     border: 1px solid var(--border-subtle);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
   }
 
   .navbar .nav-links {
@@ -2026,22 +2150,29 @@ body {
 
   /* Quick Picks Row on Mobile */
   .quick-picks-row {
-    gap: 0.85rem;
+    gap: 0.9rem;
+    padding-bottom: 0.25rem;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+
+  .quick-picks-row::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
   }
 
   .track-card {
-    min-width: 140px;
-    max-width: 140px;
+    min-width: 144px;
+    max-width: 144px;
   }
 
-  .track-overlay-actions {
-    opacity: 1 !important;
-    transform: none !important;
+  .track-thumb-wrapper {
+    border-radius: 14px;
   }
 
-  .track-overlay-btn {
-    opacity: 1 !important;
-    transform: none !important;
+  .track-desktop-hover-overlay {
+    display: none !important;
   }
 
   /* Footer on Mobile */

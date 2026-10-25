@@ -76,11 +76,11 @@ const MainApp: React.FC = () => {
           <div className="footer-content">
             <div className="footer-built-with">
               <span>Built with</span>
-              <Heart size={16} fill="#ff2d55" color="#ff2d55" className="heart-pulse-icon" />
+              <Heart size={16} fill="#ff2a85" color="#ff2a85" className="heart-pulse-icon" />
               <span>by <strong className="author-name">Shubhanshu</strong></span>
             </div>
             <div className="footer-brand-sub">
-              <span>Nyxora</span>
+              <span>Cadence</span>
               <span className="footer-dot">•</span>
               <span>Pure High-Fidelity Audio</span>
             </div>
