@@ -17,6 +17,7 @@ import {
 import { usePlayer } from '../context/PlayerContext';
 
 interface PlayerBarProps {
+  onOpenNowPlaying: () => void;
   onToggleLyrics: () => void;
   onToggleQueue: () => void;
   isLyricsOpen: boolean;
@@ -24,6 +25,7 @@ interface PlayerBarProps {
 }
 
 export const PlayerBar: React.FC<PlayerBarProps> = ({
+  onOpenNowPlaying,
   onToggleLyrics,
   onToggleQueue,
   isLyricsOpen,
@@ -72,12 +74,18 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
   const liked = isLiked(currentSong.id);
 
   return (
-    <div className="player-bar">
-      {/* Left: Track Information (Tap to view queue on mobile/desktop) */}
+    <div
+      className="player-bar"
+      onClick={onOpenNowPlaying}
+      role="button"
+      tabIndex={0}
+      title="Click to expand player & lyrics"
+    >
+      {/* Left: Track Information (Click to expand player & lyrics like Spotify) */}
       <div
         className="player-track-info"
-        onClick={onToggleQueue}
-        title="Tap to view Play Queue"
+        onClick={onOpenNowPlaying}
+        title="Tap to expand full player & lyrics"
         style={{ cursor: 'pointer' }}
       >
         <div className={`vinyl-disc ${isPlaying ? 'rotating' : ''}`}>
@@ -124,7 +132,7 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
       </div>
 
       {/* Center: Controls & Scrubber */}
-      <div className="player-center">
+      <div className="player-center" onClick={(e) => e.stopPropagation()}>
         <div className="player-controls">
           <button
             className={`icon-btn ${isShuffling ? 'active' : ''}`}
@@ -174,7 +182,7 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
       </div>
 
       {/* Right: Actions, Queue, Lyrics, Volume */}
-      <div className="player-extras">
+      <div className="player-extras" onClick={(e) => e.stopPropagation()}>
         {/* Play Queue Toggle - Prominent & Visible */}
         <button
           className={`icon-btn queue-toggle-btn ${isQueueOpen ? 'active' : ''}`}

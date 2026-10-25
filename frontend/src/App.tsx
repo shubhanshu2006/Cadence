@@ -3,6 +3,7 @@ import { Heart } from 'lucide-react';
 import { PlayerProvider, usePlayer } from './context/PlayerContext';
 import { Navbar, MobileBottomNav } from './components/Navbar';
 import { PlayerBar } from './components/PlayerBar';
+import { NowPlayingModal } from './components/NowPlayingModal';
 import { LyricsModal } from './components/LyricsModal';
 import { QueueDrawer } from './components/QueueDrawer';
 import { SettingsModal } from './components/SettingsModal';
@@ -20,6 +21,8 @@ const MainApp: React.FC = () => {
   const [isLoadingHome, setIsLoadingHome] = useState<boolean>(true);
 
   // Modals state
+  const [isNowPlayingOpen, setIsNowPlayingOpen] = useState<boolean>(false);
+  const [nowPlayingInitialTab, setNowPlayingInitialTab] = useState<'poster' | 'lyrics'>('poster');
   const [isLyricsOpen, setIsLyricsOpen] = useState<boolean>(false);
   const [isQueueOpen, setIsQueueOpen] = useState<boolean>(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
@@ -90,9 +93,16 @@ const MainApp: React.FC = () => {
 
       {/* Bottom Audio Player Bar */}
       <PlayerBar
-        onToggleLyrics={() => setIsLyricsOpen((prev) => !prev)}
+        onOpenNowPlaying={() => {
+          setNowPlayingInitialTab('poster');
+          setIsNowPlayingOpen(true);
+        }}
+        onToggleLyrics={() => {
+          setNowPlayingInitialTab('lyrics');
+          setIsNowPlayingOpen(true);
+        }}
         onToggleQueue={() => setIsQueueOpen((prev) => !prev)}
-        isLyricsOpen={isLyricsOpen}
+        isLyricsOpen={isNowPlayingOpen && nowPlayingInitialTab === 'lyrics'}
         isQueueOpen={isQueueOpen}
       />
 
@@ -100,6 +110,14 @@ const MainApp: React.FC = () => {
       <MobileBottomNav
         currentTab={currentTab}
         onSelectTab={setCurrentTab}
+      />
+
+      {/* Spotify-style Full Now Playing Modal (Poster + Synced Lyrics + Controls) */}
+      <NowPlayingModal
+        isOpen={isNowPlayingOpen}
+        onClose={() => setIsNowPlayingOpen(false)}
+        onOpenQueue={() => setIsQueueOpen(true)}
+        initialTab={nowPlayingInitialTab}
       />
 
       {/* Modals & Overlays */}
