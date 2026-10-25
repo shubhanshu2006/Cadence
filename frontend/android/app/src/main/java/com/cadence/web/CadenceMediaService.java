@@ -105,9 +105,9 @@ public class CadenceMediaService extends MediaSessionService {
             @Override
             public void onMediaItemTransition(MediaItem mediaItem, int reason) {
                 if (mediaItem == null) return;
+                resolving = false;
                 String mediaId = mediaItem.mediaId;
-                int separator = mediaId.indexOf(':');
-                currentVideoId = separator >= 0 ? mediaId.substring(0, separator) : mediaId;
+                currentVideoId = extractVideoId(mediaId);
                 currentTitle = mediaItem.mediaMetadata.title == null
                         ? null : mediaItem.mediaMetadata.title.toString();
                 currentArtist = mediaItem.mediaMetadata.artist == null
@@ -117,7 +117,7 @@ public class CadenceMediaService extends MediaSessionService {
                 MainActivity activity = MainActivity.getInstance();
                 if (activity != null) activity.handleNativeTrack(currentVideoId);
                 if (mediaItem.localConfiguration != null
-                        && "cadence".equals(mediaItem.localConfiguration.uri.getScheme())) {
+                        && "tunespark".equals(mediaItem.localConfiguration.uri.getScheme())) {
                     resolveCurrentTrack(player.getPlayWhenReady());
                 }
             }
@@ -334,9 +334,17 @@ public class CadenceMediaService extends MediaSessionService {
                 .build();
         return new MediaItem.Builder()
                 .setMediaId(videoId + ":" + index)
-                .setUri(Uri.parse("cadence://unresolved/" + videoId))
+                .setUri(Uri.parse("tunespark://unresolved/" + videoId))
                 .setMediaMetadata(metadata)
                 .build();
+    }
+
+    private static String extractVideoId(String mediaId) {
+        if (mediaId == null) return "";
+        int qualifier = mediaId.indexOf('#');
+        String normalized = qualifier >= 0 ? mediaId.substring(0, qualifier) : mediaId;
+        int separator = normalized.indexOf(':');
+        return separator >= 0 ? normalized.substring(0, separator) : normalized;
     }
 
     private void resolveCurrentTrack(boolean shouldPlay) {
@@ -405,8 +413,12 @@ public class CadenceMediaService extends MediaSessionService {
 
     @Override
     public void onTaskRemoved(@Nullable Intent rootIntent) {
-        // Media3 keeps the foreground media session alive while the task is
-        // backgrounded, which is the Spotify-style app-switch behavior.
+        // Match Tunespark: removing the task from recents ends the playback service.
+        if (player != null) {
+            player.pause();
+            player.stop();
+        }
+        stopSelf();
         super.onTaskRemoved(rootIntent);
     }
 

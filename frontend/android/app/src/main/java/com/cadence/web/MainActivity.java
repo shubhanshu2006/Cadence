@@ -8,11 +8,18 @@ import android.webkit.JavascriptInterface;
 import android.webkit.WebSettings;
 import android.util.Log;
 import com.getcapacitor.BridgeActivity;
+import android.content.ComponentName;
+import androidx.core.content.ContextCompat;
+import androidx.media3.session.MediaController;
+import androidx.media3.session.SessionToken;
+import com.google.common.util.concurrent.ListenableFuture;
 
 public class MainActivity extends BridgeActivity {
     private static final int NOTIFICATION_PERMISSION_REQUEST_CODE = 1002;
     private static final String TAG = "CadenceMainActivity";
     private static MainActivity instance;
+    private ListenableFuture<MediaController> controllerFuture;
+    private volatile MediaController mediaController;
 
     public static MainActivity getInstance() {
         return instance;
@@ -24,6 +31,18 @@ public class MainActivity extends BridgeActivity {
         instance = this;
 
         requestNotificationPermission();
+        SessionToken sessionToken = new SessionToken(
+                this,
+                new ComponentName(this, CadenceMediaService.class)
+        );
+        controllerFuture = new MediaController.Builder(this, sessionToken).buildAsync();
+        controllerFuture.addListener(() -> {
+            try {
+                mediaController = controllerFuture.get();
+            } catch (Exception exception) {
+                Log.e(TAG, "Unable to connect to native media session", exception);
+            }
+        }, ContextCompat.getMainExecutor(this));
 
         if (getBridge() != null && getBridge().getWebView() != null) {
             WebSettings settings = getBridge().getWebView().getSettings();
@@ -73,6 +92,21 @@ public class MainActivity extends BridgeActivity {
 
         @JavascriptInterface
         public void control(String action) {
+            MediaController controller = mediaController;
+            if (controller != null) {
+                if (CadenceMediaService.ACTION_PLAY.equals(action)) {
+                    controller.play();
+                } else if (CadenceMediaService.ACTION_PAUSE.equals(action)) {
+                    controller.pause();
+                } else if (CadenceMediaService.ACTION_NEXT.equals(action)) {
+                    controller.seekToNextMediaItem();
+                } else if (CadenceMediaService.ACTION_PREV.equals(action)) {
+                    controller.seekToPreviousMediaItem();
+                } else if (CadenceMediaService.ACTION_STOP.equals(action)) {
+                    controller.stop();
+                }
+                return;
+            }
             Intent intent = new Intent(MainActivity.this, CadenceMediaService.class);
             intent.setAction(action);
             try {
@@ -88,6 +122,11 @@ public class MainActivity extends BridgeActivity {
 
         @JavascriptInterface
         public void seekTo(double positionSeconds) {
+            MediaController controller = mediaController;
+            if (controller != null) {
+                controller.seekTo(Math.max(0L, (long) (positionSeconds * 1000)));
+                return;
+            }
             Intent intent = new Intent(MainActivity.this, CadenceMediaService.class);
             intent.setAction(CadenceMediaService.ACTION_SEEK);
             intent.putExtra(
@@ -167,6 +206,11 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     public void onDestroy() {
+        if (controllerFuture != null) {
+            MediaController.releaseFuture(controllerFuture);
+            controllerFuture = null;
+            mediaController = null;
+        }
         if (instance == this) {
             instance = null;
         }
