@@ -144,6 +144,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const isPlayingRef = useRef<boolean>(isPlaying);
   isPlayingRef.current = isPlaying;
   const manualPauseRef = useRef<boolean>(false);
+  const nativeQueueCommandRef = useRef<boolean>(false);
 
   // Top-level silent audio element: triggers Android MediaSession in notification shade & prevents WebView throttling
   const silentAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -235,6 +236,8 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
               },
               onStateChange: (event: any) => {
                 // 1 = PLAYING, 2 = PAUSED, 0 = ENDED
+                const nativePlayback = typeof window !== 'undefined' && Boolean((window as any).AndroidMediaBridge?.playTrack);
+                if (nativePlayback) return;
                 if (event.data === 1) {
                   setIsPlaying(true);
                   manualPauseRef.current = false;
@@ -260,6 +263,8 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 }
               },
               onError: (event: any) => {
+                const nativePlayback = typeof window !== 'undefined' && Boolean((window as any).AndroidMediaBridge?.playTrack);
+                if (nativePlayback) return;
                 console.warn('YouTube Player notice (code:', event.data, ')');
                 if (event.data === 150 || event.data === 101 || event.data === 2) {
                   // Restricted embed or unavailable video - advance to next track
@@ -300,6 +305,9 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   // Real-time progress interval timer while playing
   useEffect(() => {
+    const nativePlayback = typeof window !== 'undefined' && Boolean((window as any).AndroidMediaBridge?.playTrack);
+    if (nativePlayback) return;
+
     let timer: any = null;
     if (isPlaying) {
       timer = setInterval(() => {
@@ -379,12 +387,27 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     const nativeBridge = typeof window !== 'undefined' ? (window as any).AndroidMediaBridge : null;
     if (nativeBridge?.playTrack) {
+      const requestedQueue = newQueue || queueRef.current;
+      const nativeQueue = [
+        song,
+        ...requestedQueue.filter((item) => item.id !== song.id),
+      ].filter((item, index, items) => items.findIndex((candidate) => candidate.id === item.id) === index);
+      try {
+        ytPlayerRef.current?.pauseVideo?.();
+      } catch {}
+      silentAudioRef.current?.pause();
       nativeBridge.playTrack(
         song.id,
         song.title,
         song.artists?.map((a) => a.name).join(', ') || 'Cadence Music',
         song.thumbnailUrl || `https://i.ytimg.com/vi/${song.id}/hqdefault.jpg`,
         getApiBaseUrl(),
+        JSON.stringify(nativeQueue.map((item) => ({
+            id: item.id,
+            title: item.title,
+            artist: item.artists?.map((a) => a.name).join(', ') || 'Cadence Music',
+            artworkUrl: item.thumbnailUrl || `https://i.ytimg.com/vi/${item.id}/hqdefault.jpg`,
+          }))),
         true
       );
       setIsPlaying(true);
@@ -451,6 +474,9 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   // MediaSession API for Android Notification Shade & Lockscreen Spotify-style card
   useEffect(() => {
     if (!('mediaSession' in navigator) || !currentSong) return;
+    if (typeof window !== 'undefined' && (window as any).AndroidMediaBridge?.playTrack) {
+      return;
+    }
 
     try {
       navigator.mediaSession.metadata = new MediaMetadata({
@@ -506,23 +532,26 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
       navigator.mediaSession.setActionHandler('seekbackward', (details) => {
         const skip = details.seekOffset || 10;
-        seekTo(Math.max(0, (ytPlayerRef.current?.getCurrentTime?.() || 0) - skip));
+        seekTo(Math.max(0, currentTime - skip));
       });
 
       navigator.mediaSession.setActionHandler('seekforward', (details) => {
         const skip = details.seekOffset || 10;
-        seekTo((ytPlayerRef.current?.getCurrentTime?.() || 0) + skip);
+        seekTo(currentTime + skip);
       });
     } catch {}
   }, [currentSong]);
 
   useEffect(() => {
+    const nativePlayback = typeof window !== 'undefined' && Boolean((window as any).AndroidMediaBridge?.playTrack);
     if ('mediaSession' in navigator) {
       navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
     }
 
     if (silentAudioRef.current) {
-      if (isPlaying) {
+      if (nativePlayback) {
+        silentAudioRef.current.pause();
+      } else if (isPlaying) {
         silentAudioRef.current.play().catch(() => {});
       } else {
         silentAudioRef.current.pause();
@@ -533,6 +562,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   // Synchronize dynamic seekbar in Android notification shade
   useEffect(() => {
+    if (typeof window !== 'undefined' && (window as any).AndroidMediaBridge?.playTrack) return;
     if (
       'mediaSession' in navigator &&
       'setPositionState' in navigator.mediaSession &&
@@ -577,15 +607,43 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         silentAudioRef.current?.pause();
       },
       next: () => {
+        nativeQueueCommandRef.current = true;
         playNext();
+        window.setTimeout(() => {
+          nativeQueueCommandRef.current = false;
+        }, 500);
       },
       prev: () => {
+        nativeQueueCommandRef.current = true;
         playPrevious();
+        window.setTimeout(() => {
+          nativeQueueCommandRef.current = false;
+        }, 500);
       },
     };
 
     return () => {
       delete (window as any).CadenceRemoteControl;
+    };
+  }, []);
+
+  useEffect(() => {
+    (window as any).CadenceNativeTrack = (videoId: string) => {
+      const song = queueRef.current.find((item) => item.id === videoId);
+      if (song) {
+        setCurrentSong(song);
+        setCurrentTime(0);
+        if (song.durationSeconds) setDuration(song.durationSeconds);
+        else if (song.durationText) {
+          const parsedDuration = parseDurationToSeconds(song.durationText);
+          if (parsedDuration > 0) setDuration(parsedDuration);
+        }
+        setHistory((prev) => [song, ...prev.filter((item) => item.id !== song.id)].slice(0, 50));
+      }
+    };
+
+    return () => {
+      delete (window as any).CadenceNativeTrack;
     };
   }, []);
 
@@ -621,6 +679,11 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   const playNext = () => {
+    const nativeBridge = typeof window !== 'undefined' ? (window as any).AndroidMediaBridge : null;
+    if (nativeBridge?.control && !nativeQueueCommandRef.current) {
+      nativeBridge.control('com.cadence.web.ACTION_NEXT');
+      return;
+    }
     const currentQ = queueRef.current;
     if (currentQ.length === 0) return;
 
@@ -644,6 +707,11 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   const playPrevious = () => {
+    const nativeBridge = typeof window !== 'undefined' ? (window as any).AndroidMediaBridge : null;
+    if (nativeBridge?.control && !nativeQueueCommandRef.current) {
+      nativeBridge.control('com.cadence.web.ACTION_PREV');
+      return;
+    }
     const currentQ = queueRef.current;
     if (currentQ.length === 0) return;
 

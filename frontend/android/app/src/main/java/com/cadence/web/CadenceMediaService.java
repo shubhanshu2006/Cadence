@@ -1,9 +1,13 @@
 package com.cadence.web;
 
+import android.app.PendingIntent;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Handler;
 import android.util.Log;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 import androidx.annotation.Nullable;
 import androidx.media3.common.AudioAttributes;
@@ -28,6 +32,7 @@ public class CadenceMediaService extends MediaSessionService {
     public static final String ACTION_PREV = "com.cadence.web.ACTION_PREV";
     public static final String ACTION_NEXT = "com.cadence.web.ACTION_NEXT";
     public static final String ACTION_SEEK = "com.cadence.web.ACTION_SEEK";
+    public static final String ACTION_SYNC_PROGRESS = "com.cadence.web.ACTION_SYNC_PROGRESS";
 
     public static final String EXTRA_VIDEO_ID = "extra_video_id";
     public static final String EXTRA_TITLE = "extra_title";
@@ -36,6 +41,7 @@ public class CadenceMediaService extends MediaSessionService {
     public static final String EXTRA_BACKEND_URL = "extra_backend_url";
     public static final String EXTRA_IS_PLAYING = "extra_is_playing";
     public static final String EXTRA_POSITION_MS = "extra_position_ms";
+    public static final String EXTRA_QUEUE_JSON = "extra_queue_json";
 
     private ExoPlayer player;
     private MediaSession mediaSession;
@@ -47,14 +53,13 @@ public class CadenceMediaService extends MediaSessionService {
     private boolean resolving;
     private int resolveGeneration;
     private int recoveryAttempts;
+    private JSONArray queueJson;
+    private static CadenceMediaService instance;
     private final Runnable progressReporter = new Runnable() {
         @Override
         public void run() {
-            if (player != null && player.isPlaying()) {
-                MainActivity activity = MainActivity.getInstance();
-                if (activity != null) {
-                    activity.handleNativeProgress(player.getCurrentPosition(), player.getDuration(), true);
-                }
+            if (player != null && player.getPlayWhenReady()) {
+                reportProgress(player.isPlaying());
                 progressHandler.postDelayed(this, 500);
             }
         }
@@ -74,6 +79,7 @@ public class CadenceMediaService extends MediaSessionService {
     @Override
     public void onCreate() {
         super.onCreate();
+        instance = this;
         progressHandler = new Handler(getMainLooper());
 
         AudioAttributes audioAttributes = new AudioAttributes.Builder()
@@ -90,6 +96,22 @@ public class CadenceMediaService extends MediaSessionService {
                 .setHandleAudioBecomingNoisy(true)
                 .build();
         player.addListener(new Player.Listener() {
+            @Override
+            public void onMediaItemTransition(MediaItem mediaItem, int reason) {
+                if (mediaItem == null) return;
+                String mediaId = mediaItem.mediaId;
+                int separator = mediaId.indexOf(':');
+                currentVideoId = separator >= 0 ? mediaId.substring(0, separator) : mediaId;
+                currentTitle = mediaItem.mediaMetadata.title == null
+                        ? null : mediaItem.mediaMetadata.title.toString();
+                currentArtist = mediaItem.mediaMetadata.artist == null
+                        ? null : mediaItem.mediaMetadata.artist.toString();
+                currentArtworkUrl = mediaItem.mediaMetadata.artworkUri == null
+                        ? null : mediaItem.mediaMetadata.artworkUri.toString();
+                MainActivity activity = MainActivity.getInstance();
+                if (activity != null) activity.handleNativeTrack(currentVideoId);
+            }
+
             @Override
             public void onIsPlayingChanged(boolean isPlaying) {
                 reportProgress(isPlaying);
@@ -116,7 +138,17 @@ public class CadenceMediaService extends MediaSessionService {
                 }
             }
         });
-        mediaSession = new MediaSession.Builder(this, player).build();
+        Intent sessionIntent = new Intent(this, MainActivity.class);
+        sessionIntent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        PendingIntent sessionActivity = PendingIntent.getActivity(
+                this,
+                0,
+                sessionIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+        );
+        mediaSession = new MediaSession.Builder(this, player)
+                .setSessionActivity(sessionActivity)
+                .build();
     }
 
     @Override
@@ -131,6 +163,7 @@ public class CadenceMediaService extends MediaSessionService {
                     intent.getStringExtra(EXTRA_ARTIST),
                     intent.getStringExtra(EXTRA_ARTWORK_URL),
                     intent.getStringExtra(EXTRA_BACKEND_URL),
+                    intent.getStringExtra(EXTRA_QUEUE_JSON),
                     intent.getBooleanExtra(EXTRA_IS_PLAYING, true)
             );
         } else if (ACTION_PLAY.equals(action)) {
@@ -139,10 +172,17 @@ public class CadenceMediaService extends MediaSessionService {
             player.pause();
         } else if (ACTION_SEEK.equals(action)) {
             player.seekTo(Math.max(0L, intent.getLongExtra(EXTRA_POSITION_MS, 0L)));
+        } else if (ACTION_SYNC_PROGRESS.equals(action)) {
+            reportProgress(player.getPlayWhenReady());
         } else if (ACTION_STOP.equals(action)) {
             stopPlayback();
         } else if (ACTION_NEXT.equals(action) || ACTION_PREV.equals(action)) {
-            notifyWebPlayer(action);
+            if (player.getMediaItemCount() > 1) {
+                if (ACTION_NEXT.equals(action)) player.seekToNextMediaItem();
+                else player.seekToPreviousMediaItem();
+            } else {
+                notifyWebPlayer(action);
+            }
         }
 
         return START_STICKY;
@@ -154,6 +194,7 @@ public class CadenceMediaService extends MediaSessionService {
             String artist,
             String artworkUrl,
             String backendUrl,
+            String queueJsonValue,
             boolean shouldPlay
     ) {
         if (videoId == null || videoId.isEmpty()) {
@@ -165,6 +206,12 @@ public class CadenceMediaService extends MediaSessionService {
         currentTitle = title;
         currentArtist = artist;
         currentArtworkUrl = artworkUrl;
+        try {
+            queueJson = queueJsonValue == null ? new JSONArray() : new JSONArray(queueJsonValue);
+        } catch (Exception error) {
+            Log.w(TAG, "Invalid native queue data; playing only the selected track", error);
+            queueJson = new JSONArray();
+        }
         recoveryAttempts = 0;
         resolveGeneration++;
         int generation = resolveGeneration;
@@ -206,6 +253,47 @@ public class CadenceMediaService extends MediaSessionService {
         player.setMediaItem(item);
         player.prepare();
         player.setPlayWhenReady(shouldPlay);
+        MainActivity activity = MainActivity.getInstance();
+        if (activity != null) activity.handleNativeTrack(videoId);
+        resolveUpcomingItems(videoId);
+    }
+
+    private void resolveUpcomingItems(String currentId) {
+        if (queueJson == null || queueJson.length() < 2) return;
+        final int generation = resolveGeneration;
+        new Thread(() -> {
+            for (int index = 0; index < queueJson.length(); index++) {
+                try {
+                    JSONObject song = queueJson.getJSONObject(index);
+                    String videoId = song.optString("id");
+                    if (videoId.isEmpty() || videoId.equals(currentId)) continue;
+                    String streamUrl = StreamUrlResolver.resolveBlocking(videoId);
+                    if (streamUrl == null || streamUrl.isEmpty()) continue;
+                    final int itemIndex = index;
+                    runOnPlayerThread(() -> {
+                        if (generation != resolveGeneration) return;
+                        player.addMediaItem(createMediaItem(song, streamUrl, itemIndex));
+                    });
+                } catch (Exception error) {
+                    Log.w(TAG, "Unable to resolve queued track", error);
+                }
+            }
+        }).start();
+    }
+
+    private MediaItem createMediaItem(JSONObject song, String streamUrl, int index) {
+        String videoId = song.optString("id");
+        MediaMetadata metadata = new MediaMetadata.Builder()
+                .setTitle(song.optString("title", "Cadence Music"))
+                .setArtist(song.optString("artist", "Playing"))
+                .setAlbumTitle("Cadence Music")
+                .setArtworkUri(Uri.parse(song.optString("artworkUrl")))
+                .build();
+        return new MediaItem.Builder()
+                .setMediaId(videoId + ":" + index)
+                .setUri(Uri.parse(streamUrl))
+                .setMediaMetadata(metadata)
+                .build();
     }
 
     private void resolveCurrentTrack(boolean shouldPlay) {
@@ -276,6 +364,13 @@ public class CadenceMediaService extends MediaSessionService {
         if (progressHandler != null) progressHandler.removeCallbacksAndMessages(null);
         if (mediaSession != null) mediaSession.release();
         if (player != null) player.release();
+        if (instance == this) instance = null;
         super.onDestroy();
+    }
+
+    public static void syncProgress() {
+        if (instance != null) {
+            instance.reportProgress(instance.player != null && instance.player.getPlayWhenReady());
+        }
     }
 }

@@ -49,7 +49,7 @@ public class MainActivity extends BridgeActivity {
     public class AndroidMediaBridge {
         @JavascriptInterface
         public void playTrack(String videoId, String title, String artist, String artworkUrl,
-                              String backendUrl, boolean isPlaying) {
+                              String backendUrl, String queueJson, boolean isPlaying) {
             Intent intent = new Intent(MainActivity.this, CadenceMediaService.class);
             intent.setAction(CadenceMediaService.ACTION_PLAY_TRACK);
             intent.putExtra(CadenceMediaService.EXTRA_VIDEO_ID, videoId);
@@ -57,6 +57,7 @@ public class MainActivity extends BridgeActivity {
             intent.putExtra(CadenceMediaService.EXTRA_ARTIST, artist);
             intent.putExtra(CadenceMediaService.EXTRA_ARTWORK_URL, artworkUrl);
             intent.putExtra(CadenceMediaService.EXTRA_BACKEND_URL, backendUrl);
+            intent.putExtra(CadenceMediaService.EXTRA_QUEUE_JSON, queueJson);
             intent.putExtra(CadenceMediaService.EXTRA_IS_PLAYING, isPlaying);
 
             try {
@@ -131,6 +132,18 @@ public class MainActivity extends BridgeActivity {
         });
     }
 
+    public void handleNativeTrack(String videoId) {
+        runOnUiThread(() -> {
+            if (getBridge() != null && getBridge().getWebView() != null) {
+                String escapedId = videoId.replace("\\", "\\\\").replace("'", "\\'");
+                getBridge().getWebView().evaluateJavascript(
+                        "window.CadenceNativeTrack && window.CadenceNativeTrack('" + escapedId + "')",
+                        null
+                );
+            }
+        });
+    }
+
     @Override
     public void onBackPressed() {
         // Spotify behavior: keep music playing in background instead of destroying Activity
@@ -144,6 +157,12 @@ public class MainActivity extends BridgeActivity {
         if (getBridge() != null && getBridge().getWebView() != null) {
             getBridge().getWebView().resumeTimers();
         }
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        CadenceMediaService.syncProgress();
     }
 
     @Override
