@@ -67,7 +67,7 @@ export const SpeedDial: React.FC<SpeedDialProps> = ({ songs, isLoading }) => {
                 if (isThisSelected) {
                   togglePlayPause();
                 } else {
-                  playSong(song, songs);
+                  playSong(song);
                 }
               }}
             >
@@ -110,7 +110,7 @@ export const SpeedDial: React.FC<SpeedDialProps> = ({ songs, isLoading }) => {
                     if (isThisSelected) {
                       togglePlayPause();
                     } else {
-                      playSong(song, songs);
+                      playSong(song);
                     }
                   }}
                   title={isThisPlaying ? 'Pause' : 'Play'}

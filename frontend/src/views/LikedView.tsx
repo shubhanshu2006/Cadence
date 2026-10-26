@@ -40,7 +40,7 @@ export const LikedView: React.FC = () => {
                     if (isThisSelected) {
                       togglePlayPause();
                     } else {
-                      playSong(song, likedSongs);
+                      playSong(song);
                     }
                   }}
                 >
@@ -115,7 +115,7 @@ export const LikedView: React.FC = () => {
                     if (isThisSelected) {
                       togglePlayPause();
                     } else {
-                      playSong(song, history);
+                      playSong(song);
                     }
                   }}
                 >
@@ -154,7 +154,7 @@ export const LikedView: React.FC = () => {
                         if (isThisSelected) {
                           togglePlayPause();
                         } else {
-                          playSong(song, history);
+                          playSong(song);
                         }
                       }}
                       title={isThisPlaying ? 'Pause' : 'Play'}

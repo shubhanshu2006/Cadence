@@ -42,7 +42,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
               className="btn-primary"
               onClick={() => {
                 if (speedDialSongs.length > 0) {
-                  playSong(speedDialSongs[0], speedDialSongs);
+                  playSong(speedDialSongs[0]);
                 }
               }}
             >
@@ -85,7 +85,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                       if (isThisSelected) {
                         togglePlayPause();
                       } else {
-                        playSong(song, sec.items);
+                        playSong(song);
                       }
                     }}
                   >
@@ -130,7 +130,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                           if (isThisSelected) {
                             togglePlayPause();
                           } else {
-                            playSong(song, sec.items);
+                            playSong(song);
                           }
                         }}
                         title={isThisPlaying ? 'Pause' : 'Play'}

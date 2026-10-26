@@ -397,7 +397,16 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (newQueue) {
       setQueue(newQueue);
     } else if (!queueRef.current.some((s) => s.id === song.id)) {
-      setQueue((prev) => [song, ...prev.filter((s) => s.id !== song.id)]);
+      setQueue((prev) => {
+        const currentIndex = currentSongRef.current
+          ? prev.findIndex((item) => item.id === currentSongRef.current?.id)
+          : -1;
+        const insertIndex = currentIndex >= 0 ? currentIndex + 1 : prev.length;
+        const updated = [...prev];
+        updated.splice(insertIndex, 0, song);
+        queueAppendIndexRef.current = -1;
+        return updated;
+      });
     }
 
     // Add to History
@@ -405,14 +414,26 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     const nativeBridge = typeof window !== 'undefined' ? (window as any).AndroidMediaBridge : null;
     const existingQueueIndex = queueRef.current.findIndex((item) => item.id === song.id);
-    const playedExistingNativeTrack = !newQueue
+    const hasActiveQueue = !newQueue
+      && currentSongRef.current !== null
+      && queueRef.current.some((item) => item.id === currentSongRef.current?.id);
+    const playedExistingNativeTrack = hasActiveQueue
       && existingQueueIndex >= 0
       && nativeBridge?.playQueuedTrack
       && nativeBridge.playQueuedTrack(song.id);
     if (playedExistingNativeTrack) {
       setIsPlaying(true);
     } else if (nativeBridge?.playTrack) {
-      const requestedQueue = newQueue || queueRef.current;
+      const currentQueue = newQueue || queueRef.current;
+      const requestedQueue = newQueue || (() => {
+        const remainingQueue = currentQueue.filter((item) => item.id !== song.id);
+        const currentIndex = currentSongRef.current
+          ? remainingQueue.findIndex((item) => item.id === currentSongRef.current?.id)
+          : -1;
+        const insertIndex = currentIndex >= 0 ? currentIndex + 1 : remainingQueue.length;
+        remainingQueue.splice(insertIndex, 0, song);
+        return remainingQueue;
+      })();
       if (newQueue) queueAppendIndexRef.current = -1;
       const nativeQueue = [
         ...requestedQueue,
@@ -458,11 +479,30 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         .then((res) => res.json())
         .then((data) => {
           if (data.items && Array.isArray(data.items)) {
-            setQueue((prev) => {
-              const existingIds = new Set(prev.map((i) => i.id));
-              const newItems = data.items.filter((i: SongItem) => !existingIds.has(i.id));
-              return [...prev, ...newItems];
+          const existingIds = new Set(queueRef.current.map((item) => item.id));
+          const newItems = data.items.filter(
+            (item: SongItem) => !existingIds.has(item.id)
+          );
+          const nativeBridge = typeof window !== 'undefined'
+            ? (window as any).AndroidMediaBridge
+            : null;
+          if (nativeBridge?.appendToQueue) {
+            newItems.forEach((item: SongItem) => {
+              nativeBridge.appendToQueue(
+                item.id,
+                item.title,
+                item.artists?.map((artist) => artist.name).join(', ') || 'Cadence Music',
+                getNotificationArtworkUrl(item)
+              );
             });
+          }
+          setQueue((prev) => {
+            const currentIds = new Set(prev.map((item) => item.id));
+            return [
+              ...prev,
+              ...newItems.filter((item: SongItem) => !currentIds.has(item.id)),
+            ];
+          });
           }
         })
         .catch(() => {});

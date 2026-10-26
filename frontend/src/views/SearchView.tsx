@@ -171,7 +171,7 @@ export const SearchView: React.FC = () => {
                     if (isThisSelected) {
                       togglePlayPause();
                     } else {
-                      playSong(song, results);
+                      playSong(song);
                     }
                   }}
                 >
@@ -211,7 +211,7 @@ export const SearchView: React.FC = () => {
                         if (isThisSelected) {
                           togglePlayPause();
                         } else {
-                          playSong(song, results);
+                          playSong(song);
                         }
                       }}
                       title={isThisPlaying ? 'Pause' : 'Play'}

@@ -164,6 +164,20 @@ public class MainActivity extends BridgeActivity {
         public boolean playQueuedTrack(String videoId) {
             return CadenceMediaService.dispatchPlayQueuedTrack(videoId);
         }
+
+        @JavascriptInterface
+        public boolean playTrackAfterCurrent(String videoId, String title, String artist, String artworkUrl) {
+            return CadenceMediaService.dispatchPlayTrackAfterCurrent(
+                    videoId, title, artist, artworkUrl
+            );
+        }
+
+        @JavascriptInterface
+        public boolean appendToQueue(String videoId, String title, String artist, String artworkUrl) {
+            return CadenceMediaService.dispatchAppendToQueue(
+                    videoId, title, artist, artworkUrl
+            );
+        }
     }
 
     public void handleMediaControl(String action) {

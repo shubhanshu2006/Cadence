@@ -60,7 +60,7 @@ export const QuickPicks: React.FC<QuickPicksProps> = ({
                 if (isThisSelected) {
                   togglePlayPause();
                 } else {
-                  playSong(song, songs);
+                  playSong(song);
                 }
               }}
             >
@@ -113,7 +113,7 @@ export const QuickPicks: React.FC<QuickPicksProps> = ({
                       if (isThisSelected) {
                         togglePlayPause();
                       } else {
-                        playSong(song, songs);
+                        playSong(song);
                       }
                     }}
                     title={isThisPlaying ? 'Pause' : 'Play'}

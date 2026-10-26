@@ -116,15 +116,42 @@ public class CadenceMediaService extends MediaSessionService {
 
     public static boolean dispatchPlayQueuedTrack(String videoId) {
         CadenceMediaService service = instance;
-        if (service == null || service.player == null || videoId == null || videoId.isEmpty()) {
+        if (service == null || service.player == null || service.player.getMediaItemCount() == 0
+                || videoId == null || videoId.isEmpty()) {
             return false;
         }
+
+        boolean found = false;
+        for (int index = 0; index < service.player.getMediaItemCount(); index++) {
+            if (videoId.equals(extractVideoId(service.player.getMediaItemAt(index).mediaId))) {
+                found = true;
+                break;
+            }
+        }
+        if (!found) return false;
 
         service.runOnPlayerThread(() -> {
             for (int index = 0; index < service.player.getMediaItemCount(); index++) {
                 if (videoId.equals(extractVideoId(service.player.getMediaItemAt(index).mediaId))) {
                     service.playbackRequested = true;
+                    service.resolveGeneration++;
+                    service.resolving = false;
+                    service.currentVideoId = videoId;
+                    service.currentTitle = service.player.getMediaItemAt(index)
+                            .mediaMetadata.title == null
+                            ? null
+                            : service.player.getMediaItemAt(index).mediaMetadata.title.toString();
+                    service.currentArtist = service.player.getMediaItemAt(index)
+                            .mediaMetadata.artist == null
+                            ? null
+                            : service.player.getMediaItemAt(index).mediaMetadata.artist.toString();
+                    service.currentArtworkUrl = service.player.getMediaItemAt(index)
+                            .mediaMetadata.artworkUri == null
+                            ? null
+                            : service.player.getMediaItemAt(index).mediaMetadata.artworkUri.toString();
                     service.player.seekTo(index, 0L);
+                    service.player.setPlayWhenReady(true);
+                    service.resolveCurrentTrack(true);
                     service.player.play();
                     return;
                 }
@@ -132,6 +159,103 @@ public class CadenceMediaService extends MediaSessionService {
             Log.w(TAG, "Requested queued track was not found: " + videoId);
         });
         return true;
+    }
+
+    public static boolean dispatchPlayTrackAfterCurrent(
+            String videoId,
+            String title,
+            String artist,
+            String artworkUrl
+    ) {
+        CadenceMediaService service = instance;
+        if (service == null || service.player == null || service.player.getMediaItemCount() == 0
+                || videoId == null || videoId.isEmpty()) {
+            return false;
+        }
+
+        service.runOnPlayerThread(() -> {
+            int currentIndex = service.player.getCurrentMediaItemIndex();
+            int insertIndex = currentIndex < 0
+                    ? service.player.getMediaItemCount()
+                    : currentIndex + 1;
+            service.queueAppendIndex = -1;
+            service.playbackRequested = true;
+            service.resolveGeneration++;
+            service.resolving = true;
+            service.currentVideoId = videoId;
+            service.currentTitle = title;
+            service.currentArtist = artist;
+            service.currentArtworkUrl = artworkUrl;
+            service.resolveAndPlayInsertedTrack(
+                    videoId,
+                    title,
+                    artist,
+                    artworkUrl,
+                    insertIndex
+            );
+        });
+        return true;
+    }
+
+    private void resolveAndPlayInsertedTrack(
+            String videoId,
+            String title,
+            String artist,
+            String artworkUrl,
+            int targetIndex
+    ) {
+        final int generation = resolveGeneration;
+        new Thread(() -> {
+            try {
+                String streamUrl = StreamUrlResolver.resolveBlocking(videoId);
+                if (streamUrl == null || streamUrl.isEmpty()) {
+                    throw new IllegalStateException("No replacement audio URL returned");
+                }
+                runOnPlayerThread(() -> {
+                    resolving = false;
+                    if (generation != resolveGeneration
+                            || player == null
+                            || targetIndex < 0
+                            || targetIndex > player.getMediaItemCount()) {
+                        return;
+                    }
+                    MediaItem item = createResolvedMediaItem(
+                            videoId, title, artist, artworkUrl, streamUrl
+                    );
+                    player.addMediaItem(targetIndex, item);
+                    player.seekTo(targetIndex, 0L);
+                    player.prepare();
+                    playbackRequested = true;
+                    player.play();
+                    MainActivity activity = MainActivity.getInstance();
+                    if (activity != null) activity.handleNativeTrack(videoId);
+                });
+            } catch (Exception error) {
+                resolving = false;
+                Log.e(TAG, "Unable to resolve selected track", error);
+            }
+        }).start();
+    }
+
+    private MediaItem createResolvedMediaItem(
+            String videoId,
+            String title,
+            String artist,
+            String artworkUrl,
+            String streamUrl
+    ) {
+        MediaMetadata metadata = new MediaMetadata.Builder()
+                .setTitle(title == null ? "Cadence Music" : title)
+                .setArtist(artist == null ? "Playing" : artist)
+                .setAlbumTitle("Cadence Music")
+                .setArtworkUri(artworkUrl == null ? null : Uri.parse(artworkUrl))
+                .build();
+        MediaItem item = new MediaItem.Builder()
+                .setMediaId(videoId)
+                .setUri(Uri.parse(streamUrl))
+                .setMediaMetadata(metadata)
+                .build();
+        return item;
     }
 
     public static boolean dispatchAddToQueue(
@@ -167,6 +291,38 @@ public class CadenceMediaService extends MediaSessionService {
                 service.queueAppendIndex = insertIndex;
             } catch (Exception error) {
                 Log.e(TAG, "Unable to append song to native queue", error);
+            }
+        });
+        return true;
+    }
+
+    public static boolean dispatchAppendToQueue(
+            String videoId,
+            String title,
+            String artist,
+            String artworkUrl
+    ) {
+        CadenceMediaService service = instance;
+        if (service == null || service.player == null || videoId == null || videoId.isEmpty()) {
+            return false;
+        }
+
+        service.runOnPlayerThread(() -> {
+            JSONObject song = new JSONObject();
+            try {
+                song.put("id", videoId);
+                song.put("title", title == null ? "Cadence Music" : title);
+                song.put("artist", artist == null ? "Playing" : artist);
+                song.put("artworkUrl", artworkUrl == null ? "" : artworkUrl);
+                service.player.addMediaItem(
+                        service.player.getMediaItemCount(),
+                        service.createUnresolvedMediaItem(
+                                song,
+                                service.player.getMediaItemCount()
+                        )
+                );
+            } catch (Exception error) {
+                Log.e(TAG, "Unable to append recommended song to native queue", error);
             }
         });
         return true;
@@ -223,6 +379,14 @@ public class CadenceMediaService extends MediaSessionService {
             @Override
             public void onPlaybackStateChanged(int playbackState) {
                 reportProgress(player.getPlayWhenReady());
+                MediaItem mediaItem = player.getCurrentMediaItem();
+                if (playbackState == Player.STATE_READY
+                        && mediaItem != null
+                        && mediaItem.localConfiguration != null
+                        && "tunespark".equals(mediaItem.localConfiguration.uri.getScheme())
+                        && !resolving) {
+                    resolveCurrentTrack(playbackRequested);
+                }
             }
 
             @Override
@@ -387,6 +551,9 @@ public class CadenceMediaService extends MediaSessionService {
                 player.setMediaItems(java.util.Arrays.asList(mediaItems), safeStartIndex, 0);
                 player.prepare();
                 player.setPlayWhenReady(shouldPlay);
+                if (shouldPlay) {
+                    player.play();
+                }
                 resolveCurrentTrack(shouldPlay);
             } catch (Exception error) {
                 Log.e(TAG, "Unable to create native playback queue", error);
