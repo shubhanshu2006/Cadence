@@ -2,6 +2,14 @@ import React, { createContext, useContext, useState, useEffect, useRef } from 'r
 import { SongItem, Playlist } from '../types';
 import { apiFetch, getApiBaseUrl } from '../utils/api';
 
+const getNotificationArtworkUrl = (song: SongItem) => {
+  if (song.thumbnailUrl && !song.thumbnailUrl.includes('i.ytimg.com/vi/')) {
+    return song.thumbnailUrl;
+  }
+
+  return `https://i.ytimg.com/vi/${song.id}/maxresdefault.jpg`;
+};
+
 declare global {
   interface Window {
     YT: any;
@@ -401,13 +409,13 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         song.id,
         song.title,
         song.artists?.map((a) => a.name).join(', ') || 'Cadence Music',
-        song.thumbnailUrl || `https://i.ytimg.com/vi/${song.id}/hqdefault.jpg`,
+        getNotificationArtworkUrl(song),
         getApiBaseUrl(),
         JSON.stringify(nativeQueue.map((item) => ({
             id: item.id,
             title: item.title,
             artist: item.artists?.map((a) => a.name).join(', ') || 'Cadence Music',
-            artworkUrl: item.thumbnailUrl || `https://i.ytimg.com/vi/${item.id}/hqdefault.jpg`,
+            artworkUrl: getNotificationArtworkUrl(item),
           }))),
         true
       );
@@ -486,8 +494,8 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         album: 'Cadence Music',
         artwork: [
           {
-            src: currentSong.thumbnailUrl || `https://i.ytimg.com/vi/${currentSong.id}/hqdefault.jpg`,
-            sizes: '512x512',
+            src: getNotificationArtworkUrl(currentSong),
+            sizes: '1280x720',
             type: 'image/jpeg',
           },
         ],

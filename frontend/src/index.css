@@ -2491,11 +2491,14 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  pointer-events: auto;
+  isolation: isolate;
   animation: fadeIn 0.25s ease;
 }
 
 .now-playing-modal {
   position: relative;
+  z-index: 1;
   width: 100%;
   max-width: 520px;
   height: 92vh;
@@ -2507,7 +2510,16 @@ body {
   display: flex;
   flex-direction: column;
   box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8);
+  pointer-events: auto;
+  touch-action: manipulation;
   animation: slideUpNowPlaying 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.now-playing-modal button,
+.now-playing-modal input,
+.now-playing-modal [role='slider'] {
+  pointer-events: auto;
+  touch-action: manipulation;
 }
 
 @keyframes slideUpNowPlaying {
@@ -2545,6 +2557,7 @@ body {
 .now-playing-header {
   position: relative;
   z-index: 2;
+  pointer-events: auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -2596,6 +2609,7 @@ body {
 .now-playing-tab-switch {
   position: relative;
   z-index: 2;
+  pointer-events: auto;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2642,6 +2656,7 @@ body {
 .now-playing-body {
   position: relative;
   z-index: 2;
+  pointer-events: auto;
   flex: 1;
   min-height: 0;
   overflow: hidden;
@@ -2819,6 +2834,7 @@ body {
 .now-playing-footer {
   position: relative;
   z-index: 2;
+  pointer-events: auto;
   padding: 0.5rem 1.5rem 1.75rem 1.5rem;
   display: flex;
   flex-direction: column;
