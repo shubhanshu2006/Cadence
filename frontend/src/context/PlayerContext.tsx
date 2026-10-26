@@ -63,7 +63,7 @@ interface PlayerContextType {
   reorderQueue: (sourceIndex: number, destinationIndex: number) => void;
 
   // Playlist Operations
-  createPlaylist: (name: string, description?: string) => string;
+  createPlaylist: (name: string, description?: string, songs?: SongItem[]) => string;
   deletePlaylist: (playlistId: string) => void;
   addSongToPlaylist: (playlistId: string, song: SongItem) => void;
   removeSongFromPlaylist: (playlistId: string, songId: string) => void;
@@ -952,14 +952,14 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   // Playlist Operations
-  const createPlaylist = (name: string, description: string = '') => {
+  const createPlaylist = (name: string, description: string = '', songs: SongItem[] = []) => {
     const newId = `playlist-${Date.now()}`;
     const newPl: Playlist = {
       id: newId,
       name: name.trim() || 'My Playlist',
       description: description.trim(),
       createdAt: Date.now(),
-      songs: [],
+      songs,
     };
     setPlaylists((prev) => [newPl, ...prev]);
     showToast(`Created playlist "${newPl.name}"`);

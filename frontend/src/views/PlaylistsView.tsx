@@ -10,9 +10,11 @@ import {
   Music,
   Clock,
   X,
+  Download,
 } from 'lucide-react';
 import { Playlist, SongItem } from '../types';
 import { usePlayer } from '../context/PlayerContext';
+import { apiFetch } from '../utils/api';
 
 export const PlaylistsView: React.FC = () => {
   const {
@@ -32,6 +34,10 @@ export const PlaylistsView: React.FC = () => {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newDesc, setNewDesc] = useState('');
+  const [importProvider, setImportProvider] = useState<'spotify' | 'youtube' | null>(null);
+  const [importUrl, setImportUrl] = useState('');
+  const [isImporting, setIsImporting] = useState(false);
+  const [importError, setImportError] = useState('');
 
   const selectedPlaylist = playlists.find((p) => p.id === selectedPlaylistId);
 
@@ -43,6 +49,32 @@ export const PlaylistsView: React.FC = () => {
     setNewDesc('');
     setIsCreateOpen(false);
     setSelectedPlaylistId(id);
+  };
+
+  const handleImport = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsImporting(true);
+    setImportError('');
+    try {
+      const response = await apiFetch('/api/import/playlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider: importProvider, url: importUrl.trim() }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Playlist import failed.');
+      createPlaylist(
+        data.name,
+        `Imported from ${importProvider === 'spotify' ? 'Spotify' : 'YouTube Music'}`,
+        data.songs as SongItem[]
+      );
+      setImportProvider(null);
+      setImportUrl('');
+    } catch (error) {
+      setImportError(error instanceof Error ? error.message : 'Playlist import failed.');
+    } finally {
+      setIsImporting(false);
+    }
   };
 
   // If a playlist is selected, display its full tracklist and controls
@@ -232,10 +264,20 @@ export const PlaylistsView: React.FC = () => {
           </p>
         </div>
 
-        <button className="btn-primary" onClick={() => setIsCreateOpen(true)}>
-          <Plus size={18} />
-          <span>New Playlist</span>
-        </button>
+        <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+          <button className="btn-secondary" onClick={() => setImportProvider('spotify')}>
+            <Download size={17} />
+            <span>Import from Spotify</span>
+          </button>
+          <button className="btn-secondary" onClick={() => setImportProvider('youtube')}>
+            <Download size={17} />
+            <span>Import from YouTube Music</span>
+          </button>
+          <button className="btn-primary" onClick={() => setIsCreateOpen(true)}>
+            <Plus size={18} />
+            <span>New Playlist</span>
+          </button>
+        </div>
       </div>
 
       {/* Playlists Grid */}
@@ -343,6 +385,42 @@ export const PlaylistsView: React.FC = () => {
                 </button>
                 <button type="submit" className="btn-primary">
                   Create Playlist
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {importProvider && (
+        <div className="modal-overlay" onClick={() => !isImporting && setImportProvider(null)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 480 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ fontSize: '1.3rem', fontWeight: 700 }}>
+                Import from {importProvider === 'spotify' ? 'Spotify' : 'YouTube Music'}
+              </h3>
+              <button className="icon-btn" onClick={() => setImportProvider(null)} disabled={isImporting}>
+                <X size={20} />
+              </button>
+            </div>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+              Paste a public playlist URL. A new local playlist will be created.
+            </p>
+            <form onSubmit={handleImport} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <input
+                type="url"
+                required
+                autoFocus
+                placeholder={importProvider === 'spotify' ? 'https://open.spotify.com/playlist/...' : 'https://music.youtube.com/playlist?list=...'}
+                value={importUrl}
+                onChange={(e) => setImportUrl(e.target.value)}
+                style={{ width: '100%', background: 'rgba(255,255,255,0.06)', border: '1px solid var(--border-highlight)', borderRadius: 8, padding: '0.75rem 1rem', color: 'white', outline: 'none' }}
+              />
+              {importError && <p style={{ color: '#ff6b81', fontSize: '0.85rem' }}>{importError}</p>}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.8rem' }}>
+                <button type="button" className="btn-secondary" onClick={() => setImportProvider(null)} disabled={isImporting}>Cancel</button>
+                <button type="submit" className="btn-primary" disabled={isImporting}>
+                  {isImporting ? 'Importing...' : 'Import Playlist'}
                 </button>
               </div>
             </form>
