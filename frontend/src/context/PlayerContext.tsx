@@ -415,17 +415,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setHistory((prev) => [song, ...prev.filter((s) => s.id !== song.id)].slice(0, 50));
 
     const nativeBridge = typeof window !== 'undefined' ? (window as any).AndroidMediaBridge : null;
-    const existingQueueIndex = queueRef.current.findIndex((item) => item.id === song.id);
-    const hasActiveQueue = !newQueue
-      && currentSongRef.current !== null
-      && queueRef.current.some((item) => item.id === currentSongRef.current?.id);
-    const playedExistingNativeTrack = hasActiveQueue
-      && existingQueueIndex >= 0
-      && nativeBridge?.playQueuedTrack
-      && nativeBridge.playQueuedTrack(song.id);
-    if (playedExistingNativeTrack) {
-      setIsPlaying(true);
-    } else if (nativeBridge?.playTrack) {
+    if (nativeBridge?.playTrack) {
       const currentQueue = newQueue || queueRef.current;
       const requestedQueue = newQueue || (() => {
         const remainingQueue = currentQueue.filter((item) => item.id !== song.id);
