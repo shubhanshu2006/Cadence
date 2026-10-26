@@ -154,6 +154,16 @@ public class MainActivity extends BridgeActivity {
                 Log.e(TAG, "Unable to seek native media playback", exception);
             }
         }
+
+        @JavascriptInterface
+        public void addToQueue(String videoId, String title, String artist, String artworkUrl) {
+            CadenceMediaService.dispatchAddToQueue(videoId, title, artist, artworkUrl);
+        }
+
+        @JavascriptInterface
+        public boolean playQueuedTrack(String videoId) {
+            return CadenceMediaService.dispatchPlayQueuedTrack(videoId);
+        }
     }
 
     public void handleMediaControl(String action) {

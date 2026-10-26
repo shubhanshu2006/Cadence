@@ -60,6 +60,7 @@ public class CadenceMediaService extends MediaSessionService {
     private int resolveGeneration;
     private int recoveryAttempts;
     private boolean playbackRequested;
+    private int queueAppendIndex = -1;
     private JSONArray queueJson;
     private static CadenceMediaService instance;
     private final Runnable progressReporter = new Runnable() {
@@ -110,6 +111,64 @@ public class CadenceMediaService extends MediaSessionService {
         if (service == null || service.player == null) return false;
 
         service.runOnPlayerThread(() -> service.player.seekTo(Math.max(0L, positionMs)));
+        return true;
+    }
+
+    public static boolean dispatchPlayQueuedTrack(String videoId) {
+        CadenceMediaService service = instance;
+        if (service == null || service.player == null || videoId == null || videoId.isEmpty()) {
+            return false;
+        }
+
+        service.runOnPlayerThread(() -> {
+            for (int index = 0; index < service.player.getMediaItemCount(); index++) {
+                if (videoId.equals(extractVideoId(service.player.getMediaItemAt(index).mediaId))) {
+                    service.playbackRequested = true;
+                    service.player.seekTo(index, 0L);
+                    service.player.play();
+                    return;
+                }
+            }
+            Log.w(TAG, "Requested queued track was not found: " + videoId);
+        });
+        return true;
+    }
+
+    public static boolean dispatchAddToQueue(
+            String videoId,
+            String title,
+            String artist,
+            String artworkUrl
+    ) {
+        CadenceMediaService service = instance;
+        if (service == null || service.player == null || videoId == null || videoId.isEmpty()) {
+            return false;
+        }
+
+        service.runOnPlayerThread(() -> {
+            if (service.player.getMediaItemCount() == 0) {
+                return;
+            }
+            JSONObject song = new JSONObject();
+            try {
+                song.put("id", videoId);
+                song.put("title", title == null ? "Cadence Music" : title);
+                song.put("artist", artist == null ? "Playing" : artist);
+                song.put("artworkUrl", artworkUrl == null ? "" : artworkUrl);
+                int currentIndex = service.player.getCurrentMediaItemIndex();
+                int insertIndex = service.queueAppendIndex >= 0
+                        ? service.queueAppendIndex + 1
+                        : currentIndex + 1;
+                insertIndex = Math.max(0, Math.min(insertIndex, service.player.getMediaItemCount()));
+                service.player.addMediaItem(
+                        insertIndex,
+                        service.createUnresolvedMediaItem(song, insertIndex)
+                );
+                service.queueAppendIndex = insertIndex;
+            } catch (Exception error) {
+                Log.e(TAG, "Unable to append song to native queue", error);
+            }
+        });
         return true;
     }
 
@@ -285,6 +344,7 @@ public class CadenceMediaService extends MediaSessionService {
         }
         recoveryAttempts = 0;
         playbackRequested = shouldPlay;
+        queueAppendIndex = -1;
         resolving = false;
         resolveGeneration++;
         runOnPlayerThread(() -> {
