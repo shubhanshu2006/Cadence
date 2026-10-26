@@ -1504,6 +1504,43 @@ body {
 }
 
 /* Playlists View Styles */
+.history-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.history-subtitle {
+  margin-top: 0.35rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.history-empty-state {
+  display: flex;
+  min-height: 260px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  border: 1px dashed rgba(255, 255, 255, 0.14);
+  border-radius: var(--radius-lg);
+  color: var(--text-dim);
+  text-align: center;
+}
+
+.history-empty-state h2 {
+  margin: 0.3rem 0 0;
+  color: var(--text-main);
+  font-size: 1.1rem;
+}
+
+.history-empty-state p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+}
+
 .playlists-page {
   display: flex;
   flex-direction: column;

@@ -1,10 +1,10 @@
 import React from 'react';
-import { Radio, Search, Heart, Settings, Library, ListMusic } from 'lucide-react';
+import { Radio, Search, Heart, Settings, Library, ListMusic, History } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
 
 interface NavbarProps {
-  currentTab: 'home' | 'search' | 'liked' | 'playlists';
-  onSelectTab: (tab: 'home' | 'search' | 'liked' | 'playlists') => void;
+  currentTab: 'home' | 'search' | 'liked' | 'history' | 'playlists';
+  onSelectTab: (tab: 'home' | 'search' | 'liked' | 'history' | 'playlists') => void;
   onOpenSettings: () => void;
   onOpenQueue?: () => void;
 }
@@ -32,6 +32,15 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             <Radio size={16} />
             <span>Home</span>
+          </button>
+        </li>
+        <li>
+          <button
+            className={`nav-btn ${currentTab === 'history' ? 'active' : ''}`}
+            onClick={() => onSelectTab('history')}
+          >
+            <History size={16} />
+            <span>History</span>
           </button>
         </li>
         <li>
@@ -120,6 +129,14 @@ export const MobileBottomNav: React.FC<Pick<NavbarProps, 'currentTab' | 'onSelec
       >
         <Heart size={20} />
         <span>Favorites</span>
+      </button>
+
+      <button
+        className={`mobile-nav-btn ${currentTab === 'history' ? 'active' : ''}`}
+        onClick={() => onSelectTab('history')}
+      >
+        <History size={20} />
+        <span>History</span>
       </button>
 
       <button

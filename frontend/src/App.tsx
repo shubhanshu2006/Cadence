@@ -12,11 +12,12 @@ import { HomeView } from './views/HomeView';
 import { SearchView } from './views/SearchView';
 import { LikedView } from './views/LikedView';
 import { PlaylistsView } from './views/PlaylistsView';
+import { HistoryView } from './views/HistoryView';
 import { HomeSection } from './types';
 import { apiFetch } from './utils/api';
 
 const MainApp: React.FC = () => {
-  const [currentTab, setCurrentTab] = useState<'home' | 'search' | 'liked' | 'playlists'>('home');
+  const [currentTab, setCurrentTab] = useState<'home' | 'search' | 'liked' | 'history' | 'playlists'>('home');
   const [homeSections, setHomeSections] = useState<HomeSection[]>([]);
   const [isLoadingHome, setIsLoadingHome] = useState<boolean>(true);
 
@@ -71,6 +72,8 @@ const MainApp: React.FC = () => {
         {currentTab === 'search' && <SearchView />}
 
         {currentTab === 'liked' && <LikedView />}
+
+        {currentTab === 'history' && <HistoryView />}
 
         {currentTab === 'playlists' && <PlaylistsView />}
 
