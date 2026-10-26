@@ -57,6 +57,7 @@ public class CadenceMediaService extends MediaSessionService {
     private String currentArtist;
     private String currentArtworkUrl;
     private boolean resolving;
+    private String resolvingVideoId;
     private int resolveGeneration;
     private int recoveryAttempts;
     private boolean playbackRequested;
@@ -136,6 +137,7 @@ public class CadenceMediaService extends MediaSessionService {
                     service.playbackRequested = true;
                     service.resolveGeneration++;
                     service.resolving = false;
+                    service.resolvingVideoId = null;
                     service.currentVideoId = videoId;
                     service.currentTitle = service.player.getMediaItemAt(index)
                             .mediaMetadata.title == null
@@ -182,6 +184,7 @@ public class CadenceMediaService extends MediaSessionService {
             service.playbackRequested = true;
             service.resolveGeneration++;
             service.resolving = true;
+            service.resolvingVideoId = videoId;
             service.currentVideoId = videoId;
             service.currentTitle = title;
             service.currentArtist = artist;
@@ -213,6 +216,7 @@ public class CadenceMediaService extends MediaSessionService {
                 }
                 runOnPlayerThread(() -> {
                     resolving = false;
+                    resolvingVideoId = null;
                     if (generation != resolveGeneration
                             || player == null
                             || targetIndex < 0
@@ -363,9 +367,15 @@ public class CadenceMediaService extends MediaSessionService {
                 MainActivity activity = MainActivity.getInstance();
                 if (activity != null) activity.handleNativeTrack(currentVideoId);
                 if (mediaItem.localConfiguration != null
-                        && "tunespark".equals(mediaItem.localConfiguration.uri.getScheme())
-                        && !resolving) {
-                    resolveCurrentTrack(playbackRequested);
+                        && "tunespark".equals(mediaItem.localConfiguration.uri.getScheme())) {
+                    if (resolving && !currentVideoId.equals(resolvingVideoId)) {
+                        resolveGeneration++;
+                        resolving = false;
+                        resolvingVideoId = null;
+                    }
+                    if (!resolving) {
+                        resolveCurrentTrack(playbackRequested);
+                    }
                 }
             }
 
@@ -510,6 +520,7 @@ public class CadenceMediaService extends MediaSessionService {
         playbackRequested = shouldPlay;
         queueAppendIndex = -1;
         resolving = false;
+        resolvingVideoId = null;
         resolveGeneration++;
         runOnPlayerThread(() -> {
             if (resolveGeneration <= 0 || player == null) return;
@@ -582,7 +593,11 @@ public class CadenceMediaService extends MediaSessionService {
                 .build();
         int currentIndex = player.getCurrentMediaItemIndex();
         if (currentIndex < 0 || currentIndex >= player.getMediaItemCount()) return;
+        long currentPosition = Math.max(0L, player.getCurrentPosition());
         player.replaceMediaItem(currentIndex, item);
+        // Re-seeking the active item makes Media3 publish the replacement metadata
+        // to the foreground notification without restarting the song.
+        player.seekTo(currentIndex, currentPosition);
         player.prepare();
         if (shouldPlay) {
             player.play();
@@ -620,6 +635,7 @@ public class CadenceMediaService extends MediaSessionService {
         if (currentVideoId == null || resolving) return;
         resolving = true;
         final String videoId = currentVideoId;
+        resolvingVideoId = videoId;
         final int generation = ++resolveGeneration;
         new Thread(() -> {
             try {
@@ -629,6 +645,7 @@ public class CadenceMediaService extends MediaSessionService {
                 }
                 runOnPlayerThread(() -> {
                     resolving = false;
+                    resolvingVideoId = null;
                     if (generation != resolveGeneration || !videoId.equals(currentVideoId)) return;
                     applyResolvedStream(
                             videoId,
@@ -641,9 +658,14 @@ public class CadenceMediaService extends MediaSessionService {
                 });
             } catch (Exception error) {
                 resolving = false;
+                resolvingVideoId = null;
                 Log.e(TAG, "Unable to recover native audio stream", error);
                 runOnPlayerThread(() -> {
-                    if (generation != resolveGeneration || player == null) return;
+                    if (generation != resolveGeneration
+                            || player == null
+                            || !videoId.equals(currentVideoId)) {
+                        return;
+                    }
                     if (player.hasNextMediaItem()) {
                         player.seekToNextMediaItem();
                     } else {
@@ -667,6 +689,7 @@ public class CadenceMediaService extends MediaSessionService {
         if (player != null) {
             resolveGeneration++;
             currentVideoId = null;
+            resolvingVideoId = null;
             recoveryAttempts = 0;
             playbackRequested = false;
             player.stop();

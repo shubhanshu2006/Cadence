@@ -14,7 +14,7 @@ export const initializeAnalytics = (): void => {
   posthog.init(posthogKey, {
     api_host: posthogHost,
     autocapture: false,
-    capture_pageview: false,
+    capture_pageview: true,
     disable_session_recording: true,
     person_profiles: 'never',
     persistence: 'localStorage',
