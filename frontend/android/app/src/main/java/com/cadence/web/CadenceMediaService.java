@@ -115,6 +115,39 @@ public class CadenceMediaService extends MediaSessionService {
         return true;
     }
 
+    public static boolean dispatchReorderQueue(String orderedIdsJson) {
+        CadenceMediaService service = instance;
+        if (service == null || service.player == null || orderedIdsJson == null) {
+            return false;
+        }
+
+        service.runOnPlayerThread(() -> {
+            try {
+                JSONArray orderedIds = new JSONArray(orderedIdsJson);
+                for (int targetIndex = 0; targetIndex < orderedIds.length(); targetIndex++) {
+                    String targetId = orderedIds.optString(targetIndex);
+                    if (targetId.isEmpty() || targetIndex >= service.player.getMediaItemCount()) {
+                        continue;
+                    }
+                    int currentIndex = -1;
+                    for (int index = targetIndex; index < service.player.getMediaItemCount(); index++) {
+                        if (targetId.equals(extractVideoId(
+                                service.player.getMediaItemAt(index).mediaId))) {
+                            currentIndex = index;
+                            break;
+                        }
+                    }
+                    if (currentIndex >= 0 && currentIndex != targetIndex) {
+                        service.player.moveMediaItem(currentIndex, targetIndex);
+                    }
+                }
+            } catch (Exception error) {
+                Log.e(TAG, "Unable to reorder native queue", error);
+            }
+        });
+        return true;
+    }
+
     public static boolean dispatchPlayQueuedTrack(String videoId) {
         CadenceMediaService service = instance;
         if (service == null || service.player == null || service.player.getMediaItemCount() == 0

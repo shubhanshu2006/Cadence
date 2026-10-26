@@ -937,12 +937,15 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const reorderQueue = (sourceIndex: number, destinationIndex: number) => {
     if (sourceIndex === destinationIndex) return;
-    setQueue((prev) => {
-      const updated = [...prev];
-      const [movedItem] = updated.splice(sourceIndex, 1);
-      updated.splice(destinationIndex, 0, movedItem);
-      return updated;
+    const updatedQueue = [...queueRef.current];
+    const [movedItem] = updatedQueue.splice(sourceIndex, 1);
+    updatedQueue.splice(destinationIndex, 0, movedItem);
+    queueRef.current = updatedQueue;
+    setQueue(() => {
+      return updatedQueue;
     });
+    const nativeBridge = typeof window !== 'undefined' ? (window as any).AndroidMediaBridge : null;
+    nativeBridge?.reorderQueue?.(JSON.stringify(updatedQueue.map((song) => song.id)));
   };
 
   // Playlist Operations

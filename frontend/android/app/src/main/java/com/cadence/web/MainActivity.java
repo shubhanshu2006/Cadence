@@ -178,6 +178,11 @@ public class MainActivity extends BridgeActivity {
                     videoId, title, artist, artworkUrl
             );
         }
+
+        @JavascriptInterface
+        public boolean reorderQueue(String orderedIdsJson) {
+            return CadenceMediaService.dispatchReorderQueue(orderedIdsJson);
+        }
     }
 
     public void handleMediaControl(String action) {
