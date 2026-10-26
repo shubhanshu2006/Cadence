@@ -58,6 +58,7 @@ public class CadenceMediaService extends MediaSessionService {
     private boolean resolving;
     private int resolveGeneration;
     private int recoveryAttempts;
+    private boolean playbackRequested;
     private JSONArray queueJson;
     private static CadenceMediaService instance;
     private final Runnable progressReporter = new Runnable() {
@@ -87,8 +88,10 @@ public class CadenceMediaService extends MediaSessionService {
 
         service.runOnPlayerThread(() -> {
             if (ACTION_PLAY.equals(action)) {
+                service.playbackRequested = true;
                 service.player.play();
             } else if (ACTION_PAUSE.equals(action)) {
+                service.playbackRequested = false;
                 service.player.pause();
             } else if (ACTION_NEXT.equals(action)) {
                 service.player.seekToNextMediaItem();
@@ -133,7 +136,6 @@ public class CadenceMediaService extends MediaSessionService {
             @Override
             public void onMediaItemTransition(MediaItem mediaItem, int reason) {
                 if (mediaItem == null) return;
-                resolving = false;
                 String mediaId = mediaItem.mediaId;
                 currentVideoId = extractVideoId(mediaId);
                 currentTitle = mediaItem.mediaMetadata.title == null
@@ -145,8 +147,9 @@ public class CadenceMediaService extends MediaSessionService {
                 MainActivity activity = MainActivity.getInstance();
                 if (activity != null) activity.handleNativeTrack(currentVideoId);
                 if (mediaItem.localConfiguration != null
-                        && "tunespark".equals(mediaItem.localConfiguration.uri.getScheme())) {
-                    resolveCurrentTrack(player.getPlayWhenReady());
+                        && "tunespark".equals(mediaItem.localConfiguration.uri.getScheme())
+                        && !resolving) {
+                    resolveCurrentTrack(playbackRequested);
                 }
             }
 
@@ -172,6 +175,7 @@ public class CadenceMediaService extends MediaSessionService {
                 Log.e(TAG, "Native playback failed", error);
                 if (recoveryAttempts < 2) {
                     recoveryAttempts++;
+                    playbackRequested = true;
                     resolveCurrentTrack(true);
                 } else if (player.hasNextMediaItem()) {
                     player.seekToNextMediaItem();
@@ -227,8 +231,10 @@ public class CadenceMediaService extends MediaSessionService {
                     intent.getBooleanExtra(EXTRA_IS_PLAYING, true)
             );
         } else if (ACTION_PLAY.equals(action)) {
+            playbackRequested = true;
             if (player != null) player.play();
         } else if (ACTION_PAUSE.equals(action)) {
+            playbackRequested = false;
             if (player != null) player.pause();
         } else if (ACTION_SEEK.equals(action)) {
             if (player != null) {
@@ -275,6 +281,8 @@ public class CadenceMediaService extends MediaSessionService {
             queueJson = new JSONArray();
         }
         recoveryAttempts = 0;
+        playbackRequested = shouldPlay;
+        resolving = false;
         resolveGeneration++;
         runOnPlayerThread(() -> {
             if (resolveGeneration <= 0 || player == null) return;
@@ -347,7 +355,11 @@ public class CadenceMediaService extends MediaSessionService {
         if (currentIndex < 0 || currentIndex >= player.getMediaItemCount()) return;
         player.replaceMediaItem(currentIndex, item);
         player.prepare();
-        player.setPlayWhenReady(shouldPlay);
+        if (shouldPlay) {
+            player.play();
+        } else {
+            player.pause();
+        }
         MainActivity activity = MainActivity.getInstance();
         if (activity != null) activity.handleNativeTrack(videoId);
     }
@@ -427,6 +439,7 @@ public class CadenceMediaService extends MediaSessionService {
             resolveGeneration++;
             currentVideoId = null;
             recoveryAttempts = 0;
+            playbackRequested = false;
             player.stop();
             player.clearMediaItems();
         }
