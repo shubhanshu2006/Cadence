@@ -45,6 +45,7 @@ public class CadenceMediaService extends MediaSessionService {
     public static final String EXTRA_ARTWORK_URL = "extra_artwork_url";
     public static final String EXTRA_BACKEND_URL = "extra_backend_url";
     public static final String EXTRA_IS_PLAYING = "extra_is_playing";
+    public static final String EXTRA_START_INDEX = "extra_start_index";
     public static final String EXTRA_POSITION_MS = "extra_position_ms";
     public static final String EXTRA_QUEUE_JSON = "extra_queue_json";
 
@@ -228,6 +229,7 @@ public class CadenceMediaService extends MediaSessionService {
                     intent.getStringExtra(EXTRA_ARTWORK_URL),
                     intent.getStringExtra(EXTRA_BACKEND_URL),
                     intent.getStringExtra(EXTRA_QUEUE_JSON),
+                    intent.getIntExtra(EXTRA_START_INDEX, 0),
                     intent.getBooleanExtra(EXTRA_IS_PLAYING, true)
             );
         } else if (ACTION_PLAY.equals(action)) {
@@ -263,6 +265,7 @@ public class CadenceMediaService extends MediaSessionService {
             String artworkUrl,
             String backendUrl,
             String queueJsonValue,
+            int startIndex,
             boolean shouldPlay
     ) {
         if (videoId == null || videoId.isEmpty()) {
@@ -296,23 +299,21 @@ public class CadenceMediaService extends MediaSessionService {
                     selected.put("artworkUrl", artworkUrl == null ? "" : artworkUrl);
                     items.put(selected);
                 } else {
+                    boolean selectedTrackIncluded = false;
                     for (int index = 0; index < queueJson.length(); index++) {
                         JSONObject item = queueJson.getJSONObject(index);
+                        items.put(item);
                         if (videoId.equals(item.optString("id"))) {
-                            items.put(item);
+                            selectedTrackIncluded = true;
                         }
                     }
-                    if (items.length() == 0) {
+                    if (!selectedTrackIncluded) {
                         JSONObject selected = new JSONObject();
                         selected.put("id", videoId);
                         selected.put("title", title == null ? "Cadence Music" : title);
                         selected.put("artist", artist == null ? "Playing" : artist);
                         selected.put("artworkUrl", artworkUrl == null ? "" : artworkUrl);
-                        items.put(selected);
-                    }
-                    for (int index = 0; index < queueJson.length(); index++) {
-                        JSONObject item = queueJson.getJSONObject(index);
-                        if (!videoId.equals(item.optString("id"))) items.put(item);
+                        items.put(0, selected);
                     }
                 }
                 if (items.length() == 0) {
@@ -322,7 +323,8 @@ public class CadenceMediaService extends MediaSessionService {
                 for (int index = 0; index < items.length(); index++) {
                     mediaItems[index] = createUnresolvedMediaItem(items.getJSONObject(index), index);
                 }
-                player.setMediaItems(java.util.Arrays.asList(mediaItems), 0, 0);
+                int safeStartIndex = Math.max(0, Math.min(startIndex, mediaItems.length - 1));
+                player.setMediaItems(java.util.Arrays.asList(mediaItems), safeStartIndex, 0);
                 player.prepare();
                 player.setPlayWhenReady(shouldPlay);
                 resolveCurrentTrack(shouldPlay);

@@ -406,10 +406,11 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (nativeBridge?.playTrack) {
       const requestedQueue = newQueue || queueRef.current;
       const nativeQueue = [
-        song,
-        ...requestedQueue.filter((item) => item.id !== song.id),
+        ...requestedQueue,
+        ...(requestedQueue.some((item) => item.id === song.id) ? [] : [song]),
       ].filter((item, index, items) => items.findIndex((candidate) => candidate.id === item.id) === index)
         .slice(0, 20);
+      const nativeStartIndex = Math.max(0, nativeQueue.findIndex((item) => item.id === song.id));
       try {
         ytPlayerRef.current?.pauseVideo?.();
       } catch {}
@@ -426,6 +427,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             artist: item.artists?.map((a) => a.name).join(', ') || 'Cadence Music',
             artworkUrl: getNotificationArtworkUrl(item),
           }))),
+        nativeStartIndex,
         true
       );
       setIsPlaying(true);
