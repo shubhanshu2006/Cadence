@@ -81,6 +81,34 @@ public class CadenceMediaService extends MediaSessionService {
         }
     }
 
+    public static boolean dispatchControl(String action) {
+        CadenceMediaService service = instance;
+        if (service == null || service.player == null) return false;
+
+        service.runOnPlayerThread(() -> {
+            if (ACTION_PLAY.equals(action)) {
+                service.player.play();
+            } else if (ACTION_PAUSE.equals(action)) {
+                service.player.pause();
+            } else if (ACTION_NEXT.equals(action)) {
+                service.player.seekToNextMediaItem();
+            } else if (ACTION_PREV.equals(action)) {
+                service.player.seekToPreviousMediaItem();
+            } else if (ACTION_STOP.equals(action)) {
+                service.stopPlayback();
+            }
+        });
+        return true;
+    }
+
+    public static boolean dispatchSeek(long positionMs) {
+        CadenceMediaService service = instance;
+        if (service == null || service.player == null) return false;
+
+        service.runOnPlayerThread(() -> service.player.seekTo(Math.max(0L, positionMs)));
+        return true;
+    }
+
     @Override
     public void onCreate() {
         super.onCreate();
