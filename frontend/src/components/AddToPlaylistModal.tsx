@@ -16,9 +16,15 @@ export const AddToPlaylistModal: React.FC = () => {
 
   if (!targetSongForPlaylist) return null;
 
+  const closeModal = () => {
+    setNewPlaylistName('');
+    setIsCreating(false);
+    setTargetSongForPlaylist(null);
+  };
+
   const handleSelectPlaylist = (playlistId: string) => {
     addSongToPlaylist(playlistId, targetSongForPlaylist);
-    setTargetSongForPlaylist(null);
+    closeModal();
   };
 
   const handleCreateAndAdd = (e: React.FormEvent) => {
@@ -26,52 +32,47 @@ export const AddToPlaylistModal: React.FC = () => {
     if (!newPlaylistName.trim()) return;
     const newId = createPlaylist(newPlaylistName.trim());
     addSongToPlaylist(newId, targetSongForPlaylist);
-    setNewPlaylistName('');
-    setIsCreating(false);
-    setTargetSongForPlaylist(null);
+    closeModal();
   };
 
   return (
-    <div className="modal-overlay" onClick={() => setTargetSongForPlaylist(null)}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 440 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+    <div className="modal-overlay" onClick={closeModal}>
+      <div className="modal-content playlist-picker-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="playlist-picker-header">
+          <div className="playlist-picker-title">
             <FolderPlus size={22} color="#ff2d55" />
             <h3 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Add to Playlist</h3>
           </div>
-          <button className="icon-btn" onClick={() => setTargetSongForPlaylist(null)}>
+          <button className="icon-btn" onClick={closeModal} aria-label="Close add to playlist">
             <X size={20} />
           </button>
         </div>
 
         {/* Target Song Info */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.8rem',
-            padding: '0.75rem',
-            background: 'rgba(255, 255, 255, 0.04)',
-            borderRadius: 10,
-          }}
-        >
+        <div className="playlist-target-song">
           <img
             src={targetSongForPlaylist.thumbnailUrl || `https://i.ytimg.com/vi/${targetSongForPlaylist.id}/hqdefault.jpg`}
             alt={targetSongForPlaylist.title}
-            style={{ width: 44, height: 44, borderRadius: 6, objectFit: 'cover' }}
+            className="playlist-target-art"
           />
-          <div style={{ overflow: 'hidden' }}>
-            <div style={{ fontSize: '0.9rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <div className="playlist-target-meta">
+            <div className="playlist-target-title">
               {targetSongForPlaylist.title}
             </div>
-            <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            <div className="playlist-target-artist">
               {targetSongForPlaylist.artists.map((a) => a.name).join(', ')}
             </div>
           </div>
         </div>
 
         {/* Existing Playlists List */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '280px', overflowY: 'auto' }}>
+        <div className="playlist-picker-list">
+          {playlists.length === 0 && (
+            <div className="playlist-picker-empty">
+              <ListMusic size={20} />
+              <span>No playlists yet. Create one below to get started.</span>
+            </div>
+          )}
           {playlists.map((pl) => {
             const alreadyInPlaylist = pl.songs.some((s) => s.id === targetSongForPlaylist.id);
 
@@ -81,7 +82,7 @@ export const AddToPlaylistModal: React.FC = () => {
                 className="playlist-picker-item"
                 onClick={() => handleSelectPlaylist(pl.id)}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <div className="playlist-picker-info">
                   <div className="playlist-mini-art">
                     {pl.coverUrl ? (
                       <img src={pl.coverUrl} alt={pl.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -89,7 +90,7 @@ export const AddToPlaylistModal: React.FC = () => {
                       <ListMusic size={16} color="var(--text-muted)" />
                     )}
                   </div>
-                  <div>
+                  <div className="playlist-picker-copy">
                     <div style={{ fontWeight: 600, fontSize: '0.92rem' }}>{pl.name}</div>
                     <div style={{ fontSize: '0.78rem', color: 'var(--text-dim)' }}>
                       {pl.songs.length} {pl.songs.length === 1 ? 'track' : 'tracks'}
@@ -98,11 +99,11 @@ export const AddToPlaylistModal: React.FC = () => {
                 </div>
 
                 {alreadyInPlaylist ? (
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.75rem', color: '#10b981' }}>
+                  <span className="playlist-picker-status playlist-picker-status-added">
                     <Check size={14} /> Added
                   </span>
                 ) : (
-                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>+ Add</span>
+                  <span className="playlist-picker-status">+ Add</span>
                 )}
               </div>
             );
@@ -113,31 +114,24 @@ export const AddToPlaylistModal: React.FC = () => {
         {!isCreating ? (
           <button
             className="btn-secondary"
-            style={{ width: '100%', justifyContent: 'center' }}
+            style={{ width: '100%', justifyContent: 'center', borderStyle: 'dashed' }}
             onClick={() => setIsCreating(true)}
           >
             <Plus size={16} />
             <span>Create New Playlist</span>
           </button>
         ) : (
-          <form onSubmit={handleCreateAndAdd} style={{ display: 'flex', gap: '0.5rem' }}>
+          <form onSubmit={handleCreateAndAdd} className="playlist-create-form">
             <input
               type="text"
               autoFocus
+              aria-label="New playlist name"
               placeholder="Playlist name..."
               value={newPlaylistName}
               onChange={(e) => setNewPlaylistName(e.target.value)}
-              style={{
-                flex: 1,
-                background: 'rgba(255,255,255,0.06)',
-                border: '1px solid var(--border-highlight)',
-                borderRadius: 8,
-                padding: '0.6rem 0.9rem',
-                color: 'white',
-                outline: 'none',
-              }}
+              className="playlist-create-input"
             />
-            <button type="submit" className="btn-primary" style={{ padding: '0.6rem 1rem' }}>
+            <button type="submit" className="btn-primary playlist-create-submit">
               Create & Add
             </button>
           </form>

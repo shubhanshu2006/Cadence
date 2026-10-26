@@ -129,10 +129,10 @@ export const PlaylistsView: React.FC = () => {
         {selectedPlaylist.songs.length > 0 ? (
           <div className="playlist-track-table">
             <div className="track-table-header">
-              <span style={{ width: 36, textAlign: 'center' }}>#</span>
-              <span style={{ flex: 1 }}>Title</span>
-              <span style={{ width: 200 }}>Artist</span>
-              <span style={{ width: 120, textAlign: 'right' }}>Actions</span>
+              <span className="track-column-number">#</span>
+              <span className="track-column-title">Title</span>
+              <span className="track-column-artist">Artist</span>
+              <span className="track-column-actions">Actions</span>
             </div>
 
             {selectedPlaylist.songs.map((song, idx) => {
@@ -151,11 +151,11 @@ export const PlaylistsView: React.FC = () => {
                     }
                   }}
                 >
-                  <span style={{ width: 36, textAlign: 'center', color: isThisCurrent ? '#ff2d55' : 'var(--text-dim)' }}>
+                  <span className="track-column-number" style={{ color: isThisCurrent ? '#ff2d55' : 'var(--text-dim)' }}>
                     {isThisPlaying ? '▶' : idx + 1}
                   </span>
 
-                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '0.8rem', minWidth: 0 }}>
+                  <div className="track-column-title track-title-cell">
                     <img
                       src={song.thumbnailUrl || `https://i.ytimg.com/vi/${song.id}/hqdefault.jpg`}
                       alt={song.title}
@@ -177,12 +177,12 @@ export const PlaylistsView: React.FC = () => {
                     </div>
                   </div>
 
-                  <span style={{ width: 200, color: 'var(--text-muted)', fontSize: '0.85rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  <span className="track-column-artist track-artist-cell">
                     {song.artists && song.artists.length > 0 ? song.artists.map((a) => a.name).join(', ') : 'Unknown'}
                   </span>
 
                   <div
-                    style={{ width: 120, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.4rem' }}
+                    className="track-column-actions track-actions-cell"
                     onClick={(e) => e.stopPropagation()}
                   >
                     <button
