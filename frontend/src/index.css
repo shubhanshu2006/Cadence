@@ -1504,16 +1504,125 @@ body {
 }
 
 /* Playlists View Styles */
+.playlists-page {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.playlists-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 88% 20%, rgba(255, 45, 133, 0.16), transparent 34%),
+    linear-gradient(135deg, rgba(35, 25, 48, 0.95), rgba(17, 15, 27, 0.92));
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.22);
+}
+
+.playlists-hero-copy {
+  min-width: 190px;
+}
+
+.playlists-hero-copy .section-title {
+  margin: 0;
+}
+
+.playlists-hero-copy p {
+  max-width: 260px;
+  margin: 0.55rem 0 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.playlists-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.playlist-import-btn {
+  width: 154px;
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  padding: 0.65rem 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 999px;
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.06);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+}
+
+.playlist-import-btn span {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.1;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.playlist-provider-logo {
+  width: 25px;
+  height: 25px;
+  flex: 0 0 25px;
+  display: block;
+}
+
+.spotify-logo {
+  color: #1ed760;
+}
+
+.youtube-music-logo {
+  color: #ff1744;
+}
+
+.playlist-import-btn strong {
+  color: var(--text-dim);
+  font-size: 0.68rem;
+  font-weight: 600;
+}
+
+.playlist-import-btn:hover {
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.playlist-new-btn {
+  min-height: 48px;
+  width: 154px;
+  padding-inline: 1.15rem;
+  white-space: nowrap;
+}
+
 .playlists-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
-  gap: 1.5rem;
+  gap: 1rem;
 }
 
 .playlist-card {
   cursor: pointer;
   overflow: hidden;
-  border-radius: var(--radius-md);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(24, 18, 33, 0.78);
   transition: all 0.25s ease;
 }
 
@@ -1531,6 +1640,34 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
+}
+
+.playlist-card-cover img {
+  transition: transform 0.35s ease;
+}
+
+.playlist-card:hover .playlist-card-cover img {
+  transform: scale(1.05);
+}
+
+.playlist-card-info {
+  padding: 0.85rem 0.95rem 1rem;
+}
+
+.playlist-card-name {
+  overflow: hidden;
+  color: var(--text-main);
+  font-size: 0.98rem;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.playlist-card-count {
+  margin-top: 0.3rem;
+  color: var(--text-muted);
+  font-size: 0.78rem;
 }
 
 .playlist-hover-play {
@@ -2340,22 +2477,44 @@ body {
   }
 
   /* Playlists Header on Mobile */
-  .playlist-header-flex {
+  .playlists-hero {
     flex-direction: column !important;
-    align-items: flex-start !important;
-    gap: 1rem;
+    align-items: stretch !important;
+    gap: 1.15rem;
+    padding: 1.1rem !important;
+  }
+
+  .playlists-hero-copy p {
+    max-width: 230px;
+  }
+
+  .playlists-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.55rem;
+  }
+
+  .playlist-import-btn,
+  .playlist-new-btn {
+    width: 100%;
+    min-height: 48px;
+    padding: 0.55rem 0.7rem;
+  }
+
+  .playlist-new-btn {
+    grid-column: 1 / -1;
   }
 
   .playlists-grid {
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    gap: 0.75rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.7rem;
   }
 
-  .playlist-card > div:last-child {
-    padding: 0.75rem !important;
+  .playlist-card-info {
+    padding: 0.7rem 0.75rem 0.8rem !important;
   }
 
-  .playlist-card > div:last-child > div:first-child {
+  .playlist-card-name {
     font-size: 0.95rem !important;
   }
 

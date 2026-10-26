@@ -10,11 +10,27 @@ import {
   Music,
   Clock,
   X,
-  Download,
 } from 'lucide-react';
 import { Playlist, SongItem } from '../types';
 import { usePlayer } from '../context/PlayerContext';
 import { apiFetch } from '../utils/api';
+
+const SpotifyLogo: React.FC = () => (
+  <svg className="playlist-provider-logo spotify-logo" viewBox="0 0 24 24" aria-hidden="true">
+    <circle cx="12" cy="12" r="12" fill="currentColor" />
+    <path d="M6.7 9.2c3.45-1.05 7.72-.78 10.63.93" fill="none" stroke="#15121b" strokeWidth="1.55" strokeLinecap="round" />
+    <path d="M7.45 12.35c2.82-.75 6.2-.5 8.67.9" fill="none" stroke="#15121b" strokeWidth="1.45" strokeLinecap="round" />
+    <path d="M8.2 15.3c2.12-.5 4.52-.26 6.45.77" fill="none" stroke="#15121b" strokeWidth="1.35" strokeLinecap="round" />
+  </svg>
+);
+
+const YouTubeMusicLogo: React.FC = () => (
+  <svg className="playlist-provider-logo youtube-music-logo" viewBox="0 0 24 24" aria-hidden="true">
+    <circle cx="12" cy="12" r="12" fill="currentColor" />
+    <path d="M10 7.55 17 12l-7 4.45V7.55Z" fill="#fff" />
+    <path d="M6.15 7.2a6.8 6.8 0 0 0 0 9.6M17.85 7.2a6.8 6.8 0 0 1 0 9.6" fill="none" stroke="#fff" strokeWidth=".8" strokeLinecap="round" opacity=".8" />
+  </svg>
+);
 
 export const PlaylistsView: React.FC = () => {
   const {
@@ -252,28 +268,28 @@ export const PlaylistsView: React.FC = () => {
 
   // All Playlists Grid View
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
-      <div className="section-header">
-        <div>
+    <div className="playlists-page">
+      <div className="playlists-hero">
+        <div className="playlists-hero-copy">
           <h1 className="section-title" style={{ fontSize: '1.8rem' }}>
             <Library size={26} color="#ff2d55" />
             <span>Your Playlists</span>
           </h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', marginTop: '0.3rem' }}>
+          <p>
             Create, customize, and play your personalized collections.
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
-          <button className="btn-secondary" onClick={() => setImportProvider('spotify')}>
-            <Download size={17} />
-            <span>Import from Spotify</span>
+        <div className="playlists-actions">
+          <button className="playlist-import-btn playlist-import-spotify" onClick={() => setImportProvider('spotify')}>
+            <SpotifyLogo />
+            <span><strong>Import from</strong> Spotify</span>
           </button>
-          <button className="btn-secondary" onClick={() => setImportProvider('youtube')}>
-            <Download size={17} />
-            <span>Import from YouTube Music</span>
+          <button className="playlist-import-btn playlist-import-youtube" onClick={() => setImportProvider('youtube')}>
+            <YouTubeMusicLogo />
+            <span><strong>Import from</strong> YouTube Music</span>
           </button>
-          <button className="btn-primary" onClick={() => setIsCreateOpen(true)}>
+          <button className="btn-primary playlist-new-btn" onClick={() => setIsCreateOpen(true)}>
             <Plus size={18} />
             <span>New Playlist</span>
           </button>
@@ -310,11 +326,11 @@ export const PlaylistsView: React.FC = () => {
               )}
             </div>
 
-            <div style={{ padding: '1rem' }}>
-              <div style={{ fontWeight: 700, fontSize: '1.05rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            <div className="playlist-card-info">
+              <div className="playlist-card-name">
                 {pl.name}
               </div>
-              <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+              <div className="playlist-card-count">
                 {pl.songs.length} {pl.songs.length === 1 ? 'track' : 'tracks'}
               </div>
             </div>
