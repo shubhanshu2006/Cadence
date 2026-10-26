@@ -3,11 +3,20 @@ import { SongItem, Playlist } from '../types';
 import { apiFetch, getApiBaseUrl } from '../utils/api';
 
 const getNotificationArtworkUrl = (song: SongItem) => {
-  if (song.thumbnailUrl && !song.thumbnailUrl.includes('i.ytimg.com/vi/')) {
-    return song.thumbnailUrl;
+  return getSongArtworkUrl(song);
+};
+
+export const getSongArtworkUrl = (song: SongItem) => {
+  if (/^[a-zA-Z0-9_-]{11}$/.test(song.id)) {
+    return `https://i.ytimg.com/vi/${song.id}/sddefault.jpg`;
   }
 
-  return `https://i.ytimg.com/vi/${song.id}/maxresdefault.jpg`;
+  const thumbnailUrl = song.thumbnailUrl;
+  if (!thumbnailUrl) return '';
+
+  return thumbnailUrl
+    .replace(/=w\d+-h\d+(?:-[^&]*)?/i, '=w720-h720')
+    .replace(/\/w\d+-h\d+\//i, '/w720-h720/');
 };
 
 declare global {

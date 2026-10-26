@@ -93,7 +93,7 @@ public class MainActivity extends BridgeActivity {
         @JavascriptInterface
         public void control(String action) {
             MediaController controller = mediaController;
-            if (controller != null) {
+            if (controller != null && controller.isConnected()) {
                 if (CadenceMediaService.ACTION_PLAY.equals(action)) {
                     controller.play();
                 } else if (CadenceMediaService.ACTION_PAUSE.equals(action)) {
@@ -123,7 +123,7 @@ public class MainActivity extends BridgeActivity {
         @JavascriptInterface
         public void seekTo(double positionSeconds) {
             MediaController controller = mediaController;
-            if (controller != null) {
+            if (controller != null && controller.isConnected()) {
                 controller.seekTo(Math.max(0L, (long) (positionSeconds * 1000)));
                 return;
             }

@@ -16,7 +16,7 @@ import {
   Volume2,
   VolumeX,
 } from 'lucide-react';
-import { usePlayer } from '../context/PlayerContext';
+import { getSongArtworkUrl, usePlayer } from '../context/PlayerContext';
 import { LyricsData } from '../types';
 import { apiFetch } from '../utils/api';
 
@@ -127,7 +127,7 @@ export const NowPlayingModal: React.FC<NowPlayingModalProps> = ({
   };
 
   const liked = isLiked(currentSong.id);
-  const posterUrl = currentSong.thumbnailUrl || `https://i.ytimg.com/vi/${currentSong.id}/hqdefault.jpg`;
+  const posterUrl = getSongArtworkUrl(currentSong);
   const artistNames = currentSong.artists && currentSong.artists.length > 0
     ? currentSong.artists.map((a) => a.name).join(', ')
     : 'Cadence Music';
@@ -158,8 +158,12 @@ export const NowPlayingModal: React.FC<NowPlayingModalProps> = ({
         {/* Top Header Bar */}
         <header className="now-playing-header">
           <button
+            type="button"
             className="now-playing-collapse-btn"
-            onClick={onClose}
+            onClick={(event) => {
+              event.stopPropagation();
+              onClose();
+            }}
             title="Minimize player"
             aria-label="Minimize player"
           >
@@ -172,8 +176,12 @@ export const NowPlayingModal: React.FC<NowPlayingModalProps> = ({
           </div>
 
           <button
+            type="button"
             className="now-playing-action-btn"
-            onClick={() => setTargetSongForPlaylist(currentSong)}
+            onClick={(event) => {
+              event.stopPropagation();
+              setTargetSongForPlaylist(currentSong);
+            }}
             title="Add to playlist"
             aria-label="Add to playlist"
           >
@@ -184,15 +192,23 @@ export const NowPlayingModal: React.FC<NowPlayingModalProps> = ({
         {/* View Switcher: Poster vs Synced Lyrics */}
         <div className="now-playing-tab-switch">
           <button
+            type="button"
             className={`now-playing-tab-btn ${activeTab === 'poster' ? 'active' : ''}`}
-            onClick={() => setActiveTab('poster')}
+            onClick={(event) => {
+              event.stopPropagation();
+              setActiveTab('poster');
+            }}
           >
             <Music2 size={16} />
             <span>Poster</span>
           </button>
           <button
+            type="button"
             className={`now-playing-tab-btn ${activeTab === 'lyrics' ? 'active' : ''}`}
-            onClick={() => setActiveTab('lyrics')}
+            onClick={(event) => {
+              event.stopPropagation();
+              setActiveTab('lyrics');
+            }}
           >
             <Mic2 size={16} />
             <span>Lyrics</span>
@@ -209,6 +225,10 @@ export const NowPlayingModal: React.FC<NowPlayingModalProps> = ({
                   src={posterUrl}
                   alt={currentSong.title}
                   className="now-playing-poster-img"
+                  onError={(event) => {
+                    event.currentTarget.onerror = null;
+                    event.currentTarget.src = `https://i.ytimg.com/vi/${currentSong.id}/hqdefault.jpg`;
+                  }}
                 />
               </div>
 
@@ -216,7 +236,10 @@ export const NowPlayingModal: React.FC<NowPlayingModalProps> = ({
               {lyricsData?.syncedLyrics && lyricsData.syncedLyrics.length > 0 && (
                 <div
                   className="now-playing-mini-lyrics-card"
-                  onClick={() => setActiveTab('lyrics')}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setActiveTab('lyrics');
+                  }}
                   title="Tap to expand full synchronized lyrics"
                 >
                   <div className="mini-lyrics-header">
@@ -285,8 +308,12 @@ export const NowPlayingModal: React.FC<NowPlayingModalProps> = ({
             </div>
 
             <button
+              type="button"
               className={`now-playing-heart-btn ${liked ? 'active' : ''}`}
-              onClick={() => toggleLikeSong(currentSong)}
+              onClick={(event) => {
+                event.stopPropagation();
+                toggleLikeSong(currentSong);
+              }}
               title={liked ? 'Remove from favorites' : 'Add to favorites'}
               aria-label={liked ? 'Remove from favorites' : 'Add to favorites'}
             >
@@ -298,7 +325,10 @@ export const NowPlayingModal: React.FC<NowPlayingModalProps> = ({
           <div className="now-playing-progress-section">
             <div
               className="now-playing-scrub-bar-wrap"
-              onClick={handleSeekChange}
+              onClick={(event) => {
+                event.stopPropagation();
+                handleSeekChange(event);
+              }}
               role="slider"
               aria-valuenow={currentTime}
               aria-valuemax={duration}
@@ -322,8 +352,12 @@ export const NowPlayingModal: React.FC<NowPlayingModalProps> = ({
           {/* Primary Controls Row */}
           <div className="now-playing-controls-row">
             <button
+              type="button"
               className={`now-playing-control-btn ${isShuffling ? 'active' : ''}`}
-              onClick={toggleShuffle}
+              onClick={(event) => {
+                event.stopPropagation();
+                toggleShuffle();
+              }}
               title={isShuffling ? 'Shuffle on' : 'Shuffle off'}
               aria-label="Shuffle"
             >
@@ -331,8 +365,12 @@ export const NowPlayingModal: React.FC<NowPlayingModalProps> = ({
             </button>
 
             <button
+              type="button"
               className="now-playing-control-btn"
-              onClick={playPrevious}
+              onClick={(event) => {
+                event.stopPropagation();
+                playPrevious();
+              }}
               title="Previous song"
               aria-label="Previous song"
             >
@@ -340,8 +378,12 @@ export const NowPlayingModal: React.FC<NowPlayingModalProps> = ({
             </button>
 
             <button
+              type="button"
               className="now-playing-main-play-btn"
-              onClick={togglePlayPause}
+              onClick={(event) => {
+                event.stopPropagation();
+                togglePlayPause();
+              }}
               title={isPlaying ? 'Pause' : 'Play'}
               aria-label={isPlaying ? 'Pause' : 'Play'}
             >
@@ -353,8 +395,12 @@ export const NowPlayingModal: React.FC<NowPlayingModalProps> = ({
             </button>
 
             <button
+              type="button"
               className="now-playing-control-btn"
-              onClick={playNext}
+              onClick={(event) => {
+                event.stopPropagation();
+                playNext();
+              }}
               title="Next song"
               aria-label="Next song"
             >
@@ -362,8 +408,12 @@ export const NowPlayingModal: React.FC<NowPlayingModalProps> = ({
             </button>
 
             <button
+              type="button"
               className={`now-playing-control-btn ${repeatMode !== 'off' ? 'active' : ''}`}
-              onClick={toggleRepeat}
+              onClick={(event) => {
+                event.stopPropagation();
+                toggleRepeat();
+              }}
               title={`Repeat: ${repeatMode}`}
               aria-label={`Repeat mode: ${repeatMode}`}
             >
@@ -375,8 +425,12 @@ export const NowPlayingModal: React.FC<NowPlayingModalProps> = ({
           <div className="now-playing-bottom-extras">
             <div className="now-playing-volume-row">
               <button
+                type="button"
                 className="now-playing-control-btn icon-small"
-                onClick={toggleMute}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  toggleMute();
+                }}
                 title={isMuted ? 'Unmute' : 'Mute'}
               >
                 {isMuted || volume === 0 ? <VolumeX size={18} /> : <Volume2 size={18} />}
@@ -394,8 +448,10 @@ export const NowPlayingModal: React.FC<NowPlayingModalProps> = ({
             </div>
 
             <button
+              type="button"
               className="now-playing-queue-btn"
-              onClick={() => {
+              onClick={(event) => {
+                event.stopPropagation();
                 onClose();
                 onOpenQueue();
               }}

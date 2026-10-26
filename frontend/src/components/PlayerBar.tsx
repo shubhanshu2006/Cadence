@@ -14,7 +14,7 @@ import {
   Heart,
   FolderPlus,
 } from 'lucide-react';
-import { usePlayer } from '../context/PlayerContext';
+import { getSongArtworkUrl, usePlayer } from '../context/PlayerContext';
 
 interface PlayerBarProps {
   onOpenNowPlaying: () => void;
@@ -90,9 +90,13 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
       >
         <div className={`vinyl-disc ${isPlaying ? 'rotating' : ''}`}>
           <img
-            src={currentSong.thumbnailUrl || `https://i.ytimg.com/vi/${currentSong.id}/hqdefault.jpg`}
+            src={getSongArtworkUrl(currentSong)}
             alt={currentSong.title}
             className="vinyl-img"
+            onError={(event) => {
+              event.currentTarget.onerror = null;
+              event.currentTarget.src = `https://i.ytimg.com/vi/${currentSong.id}/hqdefault.jpg`;
+            }}
           />
         </div>
 
