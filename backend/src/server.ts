@@ -6,6 +6,7 @@ import { YouTubeService } from './services/youtube.service.js';
 import { LyricsService } from './services/lyrics.service.js';
 import { WeatherService } from './services/weather.service.js';
 import { RssService } from './services/rss.service.js';
+import { PlaylistImportService } from './services/playlist-import.service.js';
 
 dotenv.config();
 
@@ -20,6 +21,22 @@ app.use(cors({
 }));
 
 app.use(express.json());
+
+app.post('/api/import/playlist', async (req: Request, res: Response) => {
+  try {
+    const provider = req.body?.provider;
+    const url = typeof req.body?.url === 'string' ? req.body.url.trim() : '';
+    if (!['spotify', 'youtube'].includes(provider) || !url) {
+      res.status(400).json({ error: 'A provider and playlist URL are required.' });
+      return;
+    }
+    const result = await PlaylistImportService.import(provider, url);
+    res.json(result);
+  } catch (error: any) {
+    console.error('Playlist import error:', error);
+    res.status(400).json({ error: error?.message || 'Playlist import failed.' });
+  }
+});
 
 // Health Check
 app.get('/api/health', (_req: Request, res: Response) => {

@@ -571,6 +571,10 @@ export class YouTubeService {
     }
   }
 
+  static parseImportedItem(item: any): SongItem | null {
+    return this.parseMusicItem(item);
+  }
+
   private static parseMusicItem(item: any): SongItem | null {
     if (!item) return null;
 
