@@ -364,6 +364,7 @@ public class CadenceMediaService extends MediaSessionService {
                         ? null : mediaItem.mediaMetadata.artist.toString();
                 currentArtworkUrl = mediaItem.mediaMetadata.artworkUri == null
                         ? null : mediaItem.mediaMetadata.artworkUri.toString();
+                recoveryAttempts = 0;
                 MainActivity activity = MainActivity.getInstance();
                 if (activity != null) activity.handleNativeTrack(currentVideoId);
                 if (mediaItem.localConfiguration != null
@@ -407,11 +408,14 @@ public class CadenceMediaService extends MediaSessionService {
             @Override
             public void onPlayerError(PlaybackException error) {
                 Log.e(TAG, "Native playback failed", error);
-                if (recoveryAttempts < 2) {
+                if (recoveryAttempts < 3) {
                     recoveryAttempts++;
                     playbackRequested = true;
-                    resolveCurrentTrack(true);
-                } else if (player.hasNextMediaItem()) {
+                    resolveCurrentTrack(true, true);
+                } else if (player.hasNextMediaItem()
+                        && currentVideoId.equals(extractVideoId(
+                                player.getCurrentMediaItem() == null
+                                        ? null : player.getCurrentMediaItem().mediaId))) {
                     player.seekToNextMediaItem();
                 }
             }
@@ -595,8 +599,6 @@ public class CadenceMediaService extends MediaSessionService {
         if (currentIndex < 0 || currentIndex >= player.getMediaItemCount()) return;
         long currentPosition = Math.max(0L, player.getCurrentPosition());
         player.replaceMediaItem(currentIndex, item);
-        // Re-seeking the active item makes Media3 publish the replacement metadata
-        // to the foreground notification without restarting the song.
         player.seekTo(currentIndex, currentPosition);
         player.prepare();
         if (shouldPlay) {
@@ -632,7 +634,16 @@ public class CadenceMediaService extends MediaSessionService {
     }
 
     private void resolveCurrentTrack(boolean shouldPlay) {
-        if (currentVideoId == null || resolving) return;
+        resolveCurrentTrack(shouldPlay, false);
+    }
+
+    private void resolveCurrentTrack(boolean shouldPlay, boolean force) {
+        if (currentVideoId == null || (resolving && !force)) return;
+        if (force && resolving) {
+            resolveGeneration++;
+            resolving = false;
+            resolvingVideoId = null;
+        }
         resolving = true;
         final String videoId = currentVideoId;
         resolvingVideoId = videoId;
@@ -660,18 +671,6 @@ public class CadenceMediaService extends MediaSessionService {
                 resolving = false;
                 resolvingVideoId = null;
                 Log.e(TAG, "Unable to recover native audio stream", error);
-                runOnPlayerThread(() -> {
-                    if (generation != resolveGeneration
-                            || player == null
-                            || !videoId.equals(currentVideoId)) {
-                        return;
-                    }
-                    if (player.hasNextMediaItem()) {
-                        player.seekToNextMediaItem();
-                    } else {
-                        player.pause();
-                    }
-                });
             }
         }).start();
     }
