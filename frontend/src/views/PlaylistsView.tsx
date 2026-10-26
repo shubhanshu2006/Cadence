@@ -14,6 +14,7 @@ import {
 import { Playlist, SongItem } from '../types';
 import { usePlayer } from '../context/PlayerContext';
 import { apiFetch } from '../utils/api';
+import { trackEvent } from '../utils/analytics';
 
 const SpotifyLogo: React.FC = () => (
   <svg className="playlist-provider-logo spotify-logo" viewBox="0 0 24 24" aria-hidden="true">
@@ -84,6 +85,10 @@ export const PlaylistsView: React.FC = () => {
         `Imported from ${importProvider === 'spotify' ? 'Spotify' : 'YouTube Music'}`,
         data.songs as SongItem[]
       );
+      trackEvent('playlist_imported', {
+        provider: importProvider,
+        song_count: Array.isArray(data.songs) ? data.songs.length : 0,
+      });
       setImportProvider(null);
       setImportUrl('');
     } catch (error) {

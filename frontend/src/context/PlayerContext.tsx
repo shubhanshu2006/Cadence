@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { SongItem, Playlist } from '../types';
 import { apiFetch, getApiBaseUrl } from '../utils/api';
+import { trackEvent } from '../utils/analytics';
 
 const getNotificationArtworkUrl = (song: SongItem) => {
   return getSongArtworkUrl(song);
@@ -380,6 +381,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     manualPauseRef.current = false;
     setCurrentSong(song);
     setCurrentTime(0);
+    trackEvent('song_started', { song_id: song.id });
 
     // Awaken top-level audio on user gesture for Android Notification shade
     if (silentAudioRef.current) {
@@ -856,9 +858,11 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setLikedSongs((prev) => {
       const exists = prev.some((s) => s.id === song.id);
       if (exists) {
+        trackEvent('song_unliked', { song_id: song.id });
         showToast(`Removed "${song.title}" from favorites`);
         return prev.filter((s) => s.id !== song.id);
       } else {
+        trackEvent('song_liked', { song_id: song.id });
         showToast(`Added "${song.title}" to favorites`);
         return [song, ...prev];
       }
@@ -962,6 +966,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       songs,
     };
     setPlaylists((prev) => [newPl, ...prev]);
+    trackEvent('playlist_created', { song_count: songs.length });
     showToast(`Created playlist "${newPl.name}"`);
     return newId;
   };
@@ -985,6 +990,10 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           return pl;
         }
         showToast(`Added to "${pl.name}"`);
+        trackEvent('song_added_to_playlist', {
+          playlist_id: playlistId,
+          song_id: song.id,
+        });
         return {
           ...pl,
           coverUrl: pl.coverUrl || song.thumbnailUrl,
