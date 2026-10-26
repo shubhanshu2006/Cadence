@@ -365,6 +365,7 @@ public class CadenceMediaService extends MediaSessionService {
                 currentArtworkUrl = mediaItem.mediaMetadata.artworkUri == null
                         ? null : mediaItem.mediaMetadata.artworkUri.toString();
                 recoveryAttempts = 0;
+                refreshPlaybackNotification();
                 MainActivity activity = MainActivity.getInstance();
                 if (activity != null) activity.handleNativeTrack(currentVideoId);
                 if (mediaItem.localConfiguration != null
@@ -606,8 +607,20 @@ public class CadenceMediaService extends MediaSessionService {
         } else {
             player.pause();
         }
+        refreshPlaybackNotification();
         MainActivity activity = MainActivity.getInstance();
         if (activity != null) activity.handleNativeTrack(videoId);
+    }
+
+    private void refreshPlaybackNotification() {
+        if (mediaSession != null) {
+            onUpdateNotification(mediaSession, true);
+        }
+    }
+
+    @Override
+    public void onUpdateNotification(MediaSession session, boolean startInForeground) {
+        super.onUpdateNotification(session, true);
     }
 
     private MediaItem createUnresolvedMediaItem(JSONObject song, int index) {
