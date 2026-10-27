@@ -1870,6 +1870,10 @@ body {
   border-color: rgba(255, 45, 85, 0.25);
 }
 
+.playlist-picker-overlay {
+  z-index: 200;
+}
+
 .playlist-picker-modal {
   max-width: 440px;
 }

@@ -36,7 +36,7 @@ export const AddToPlaylistModal: React.FC = () => {
   };
 
   return (
-    <div className="modal-overlay" onClick={closeModal}>
+    <div className="modal-overlay playlist-picker-overlay" onClick={closeModal}>
       <div className="modal-content playlist-picker-modal" onClick={(e) => e.stopPropagation()}>
         <div className="playlist-picker-header">
           <div className="playlist-picker-title">
