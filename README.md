@@ -14,6 +14,10 @@
 [![Capacitor](https://img.shields.io/badge/Capacitor-Android-119eff?style=flat&logo=capacitor)](https://capacitorjs.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple.svg)](LICENSE)
 
+<br/>
+
+[![Download Android APK](https://img.shields.io/badge/Download-Cadence%20APK%20(v1.0.0)-00C853?style=for-the-badge&logo=android&logoColor=white)](https://github.com/shubhanshu2006/Cadence/releases/download/v1.0.0/Cadence.apk)
+
 </div>
 
 ---
@@ -85,7 +89,18 @@ Open **`http://localhost:5173`** in your browser.
 
 ---
 
-## 📱 Building the Android APK
+## 📱 Android App (Download & Build)
+
+### ⬇️ Direct APK Download
+Install the latest release directly onto your phone (compatible with Android 8.0+):
+
+[![Download Cadence APK](https://img.shields.io/badge/Download-Cadence.apk-00C853?style=for-the-badge&logo=android&logoColor=white)](https://github.com/shubhanshu2006/Cadence/releases/download/v1.0.0/Cadence.apk)
+
+**Direct Link**: [Cadence.apk (v1.0.0)](https://github.com/shubhanshu2006/Cadence/releases/download/v1.0.0/Cadence.apk)
+
+---
+
+### 🛠️ Building the Android APK Yourself
 
 You can build the Android installer APK using either of the methods below:
 
@@ -160,6 +175,15 @@ For the Android APK to stream songs for anyone in the world without running a lo
 | Variable | Description | Default |
 |---|---|---|
 | `VITE_API_BASE_URL` | Backend URL for API calls (leave empty for web dev proxy) | `""` |
+| `VITE_PUBLIC_POSTHOG_KEY` | Public PostHog project key used for product analytics | Not set |
+| `VITE_PUBLIC_POSTHOG_HOST` | PostHog ingestion host | `https://us.i.posthog.com` |
+
+For Vercel deployments, configure `VITE_PUBLIC_POSTHOG_KEY` and
+`VITE_PUBLIC_POSTHOG_HOST` in the project Environment Variables and redeploy.
+For APK builds from GitHub Actions, add the PostHog project key as an
+Actions secret named `VITE_PUBLIC_POSTHOG_KEY`. The key is public by design,
+but keeping it in deployment configuration ensures every build is configured
+consistently.
 
 ---
 
