@@ -51,6 +51,7 @@ public class CadenceMediaService extends MediaSessionService {
 
     private ExoPlayer player;
     private MediaSession mediaSession;
+    private final java.util.Set<String> prefetchingVideoIds = new java.util.HashSet<>();
     private Handler progressHandler;
     private String currentVideoId;
     private String currentTitle;
@@ -398,6 +399,7 @@ public class CadenceMediaService extends MediaSessionService {
                 currentArtworkUrl = mediaItem.mediaMetadata.artworkUri == null
                         ? null : mediaItem.mediaMetadata.artworkUri.toString();
                 recoveryAttempts = 0;
+                prefetchNextStream();
                 refreshPlaybackNotification();
                 MainActivity activity = MainActivity.getInstance();
                 if (activity != null) activity.handleNativeTrack(currentVideoId);
@@ -437,6 +439,7 @@ public class CadenceMediaService extends MediaSessionService {
             @Override
             public void onTimelineChanged(androidx.media3.common.Timeline timeline, int reason) {
                 reportProgress(player.getPlayWhenReady());
+                prefetchNextStream();
             }
 
             @Override
@@ -645,6 +648,55 @@ public class CadenceMediaService extends MediaSessionService {
         if (activity != null) activity.handleNativeTrack(videoId);
     }
 
+    private static boolean isUnresolved(MediaItem item) {
+        return item.localConfiguration != null
+                && "tunespark".equals(item.localConfiguration.uri.getScheme());
+    }
+
+    /**
+     * Resolves the stream of the upcoming queue item while the current track is playing.
+     *
+     * <p>An unresolved item cannot be played, so reaching it drops the player to idle. Media3 then
+     * removes the notification and leaves the foreground, and Android refuses to restart the
+     * foreground service while the app is in the background, so the next track's notification (and
+     * its poster) is never shown. A resolved next item makes the transition seamless.
+     */
+    private void prefetchNextStream() {
+        if (player == null) return;
+        int currentIndex = player.getCurrentMediaItemIndex();
+        int nextIndex = currentIndex + 1;
+        if (currentIndex < 0 || nextIndex >= player.getMediaItemCount()) return;
+        MediaItem next = player.getMediaItemAt(nextIndex);
+        if (!isUnresolved(next)) return;
+        final String videoId = extractVideoId(next.mediaId);
+        if (videoId.isEmpty() || !prefetchingVideoIds.add(videoId)) return;
+        new Thread(() -> {
+            String streamUrl = null;
+            try {
+                streamUrl = StreamUrlResolver.resolveBlocking(videoId);
+            } catch (Exception error) {
+                Log.w(TAG, "Unable to prefetch next audio stream", error);
+            }
+            final String resolvedUrl = streamUrl;
+            runOnPlayerThread(() -> {
+                prefetchingVideoIds.remove(videoId);
+                if (player == null || resolvedUrl == null || resolvedUrl.isEmpty()) return;
+                for (int index = 0; index < player.getMediaItemCount(); index++) {
+                    MediaItem item = player.getMediaItemAt(index);
+                    if (index != player.getCurrentMediaItemIndex()
+                            && isUnresolved(item)
+                            && videoId.equals(extractVideoId(item.mediaId))) {
+                        player.replaceMediaItem(
+                                index,
+                                item.buildUpon().setUri(Uri.parse(resolvedUrl)).build()
+                        );
+                        break;
+                    }
+                }
+            });
+        }).start();
+    }
+
     private void refreshPlaybackNotification() {
         if (mediaSession != null) {
             onUpdateNotification(mediaSession, true);
@@ -765,6 +817,7 @@ public class CadenceMediaService extends MediaSessionService {
         if (progressHandler != null) progressHandler.removeCallbacksAndMessages(null);
         if (mediaSession != null) mediaSession.release();
         if (player != null) player.release();
+
         if (instance == this) instance = null;
         super.onDestroy();
     }
