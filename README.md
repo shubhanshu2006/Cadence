@@ -12,7 +12,7 @@
 [![React](https://img.shields.io/badge/React-19+-61dafb?style=flat&logo=react)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7+-3178c6?style=flat&logo=typescript)](https://www.typescriptlang.org)
 [![Capacitor](https://img.shields.io/badge/Capacitor-Android-119eff?style=flat&logo=capacitor)](https://capacitorjs.com)
-[![License: MIT](https://img.shields.io/badge/License-MIT-purple.svg)](LICENSE)
+[![License: All Rights Reserved](https://img.shields.io/badge/License-All%20Rights%20Reserved-red.svg)](LICENSE)
 
 <br/>
 
@@ -189,5 +189,5 @@ consistently.
 
 ## 📄 License & Disclaimer
 
-- **License**: Released under the [MIT License](LICENSE).
-- **Disclaimer**: Cadence is an independent open-source educational project. It is not affiliated with, endorsed by, or sponsored by YouTube, Google, ElevenLabs, or LRCLIB.
+- **License**: **All Rights Reserved**. Copying, modifying, redistributing, or re-uploading this project or any of its code is strictly prohibited without explicit written permission from the copyright owner. See [LICENSE](LICENSE).
+- **Disclaimer**: Cadence is an independent project. It is not affiliated with, endorsed by, or sponsored by YouTube, Google, ElevenLabs, or LRCLIB.
