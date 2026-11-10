@@ -8,6 +8,7 @@ import { LyricsModal } from './components/LyricsModal';
 import { QueueDrawer } from './components/QueueDrawer';
 import { SettingsModal } from './components/SettingsModal';
 import { AddToPlaylistModal } from './components/AddToPlaylistModal';
+import { ToastNotification } from './components/ToastNotification';
 import { HomeView } from './views/HomeView';
 import { SearchView } from './views/SearchView';
 import { LikedView } from './views/LikedView';
@@ -28,7 +29,7 @@ const MainApp: React.FC = () => {
   const [isQueueOpen, setIsQueueOpen] = useState<boolean>(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
 
-  const { toastMessage } = usePlayer();
+  const { toastMessage, currentSong } = usePlayer();
 
   // Load home sections
   useEffect(() => {
@@ -134,9 +135,7 @@ const MainApp: React.FC = () => {
 
       {/* Global Interactive Notification Toast */}
       {toastMessage && (
-        <div className="toast-notification">
-          <span>{toastMessage}</span>
-        </div>
+        <ToastNotification message={toastMessage} hasPlayer={Boolean(currentSong)} />
       )}
     </div>
   );

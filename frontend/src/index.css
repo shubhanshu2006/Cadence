@@ -920,16 +920,31 @@ body {
   justify-content: center;
   padding: 0.45rem;
   border-radius: 50%;
-  transition: all 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .icon-btn:hover {
   color: var(--text-main);
   background: rgba(255, 255, 255, 0.08);
+  transform: scale(1.05);
+}
+
+.icon-btn:active {
+  transform: scale(0.9);
 }
 
 .icon-btn.active {
   color: var(--accent-pink);
+}
+
+.icon-btn.active svg {
+  animation: iconPop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes iconPop {
+  0% { transform: scale(0.9); }
+  50% { transform: scale(1.28); }
+  100% { transform: scale(1); }
 }
 
 .progress-container {
@@ -967,6 +982,24 @@ body {
   background: var(--accent-gradient);
   border-radius: var(--radius-full);
   position: relative;
+}
+
+.progress-bar-fill::after {
+  content: '';
+  position: absolute;
+  right: -5px;
+  top: 50%;
+  transform: translateY(-50%) scale(0);
+  width: 12px;
+  height: 12px;
+  background: #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+  transition: transform 0.15s ease;
+}
+
+.progress-bar-wrap:hover .progress-bar-fill::after {
+  transform: translateY(-50%) scale(1);
 }
 
 .player-extras {
@@ -1072,22 +1105,36 @@ body {
 }
 
 /* Queue Drawer */
+/* ========================================================
+   Spotify-Style Play Queue Drawer
+   ======================================================== */
+.queue-overlay-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 44;
+  animation: fadeIn 0.2s ease;
+}
+
 .queue-drawer {
   position: fixed;
   right: 0;
   top: 0;
   bottom: var(--player-height);
-  width: 380px;
-  background: var(--bg-surface);
-  border-left: 1px solid var(--border-subtle);
-  backdrop-filter: blur(20px);
+  width: 400px;
+  background: rgba(14, 10, 19, 0.96);
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(32px) saturate(180%);
+  -webkit-backdrop-filter: blur(32px) saturate(180%);
   z-index: 45;
   display: flex;
   flex-direction: column;
-  padding: 1.5rem;
-  gap: 1.25rem;
-  box-shadow: -10px 0 30px rgba(0, 0, 0, 0.5);
-  animation: slideInRight 0.25s ease;
+  padding: 1.5rem 1.25rem;
+  gap: 0.5rem;
+  box-shadow: -15px 0 45px rgba(0, 0, 0, 0.7);
+  animation: slideInRight 0.28s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @keyframes slideInRight {
@@ -1100,32 +1147,135 @@ body {
   }
 }
 
+.queue-header-icon-pill {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(255, 45, 85, 0.2), rgba(255, 122, 24, 0.14));
+  border: 1px solid rgba(255, 45, 85, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.queue-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 1.5rem;
+  text-align: center;
+  gap: 0.6rem;
+  color: var(--text-dim);
+}
+
+.queue-empty-state p {
+  font-weight: 700;
+  font-size: 1rem;
+  color: #ffffff;
+  margin: 0;
+}
+
+.queue-empty-state span {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
 .queue-items-list {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
+  gap: 0.45rem;
   overflow-y: auto;
   flex: 1;
+  padding-right: 2px;
 }
 
 .queue-item {
   display: flex;
   align-items: center;
-  gap: 0.8rem;
-  padding: 0.6rem;
-  border-radius: var(--radius-sm);
+  gap: 0.75rem;
+  padding: 0.55rem 0.65rem;
+  border-radius: 12px;
   background: rgba(255, 255, 255, 0.03);
+  border: 1px solid transparent;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .queue-item:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.08);
+  transform: translateX(-2px);
 }
 
 .queue-item.active {
-  border-left: 3px solid var(--accent-pink);
-  background: rgba(255, 45, 85, 0.1);
+  background: linear-gradient(90deg, rgba(255, 45, 85, 0.18), rgba(255, 42, 133, 0.06));
+  border: 1px solid rgba(255, 45, 85, 0.35);
+  box-shadow: 0 4px 18px rgba(255, 45, 85, 0.15);
+}
+
+.queue-item-thumb-wrap {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.queue-item-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.queue-thumb-equalizer-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(2px);
+}
+
+.queue-now-playing-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: #ff2d55;
+  background: rgba(255, 45, 85, 0.14);
+  border: 1px solid rgba(255, 45, 85, 0.3);
+  padding: 3px 8px;
+  border-radius: 9999px;
+  white-space: nowrap;
+}
+
+.queue-pulsing-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ff2d55;
+  box-shadow: 0 0 8px #ff2d55;
+  animation: pulseDot 1.4s infinite ease-in-out;
+}
+
+@keyframes pulseDot {
+  0%, 100% { transform: scale(0.8); opacity: 0.7; }
+  50% { transform: scale(1.25); opacity: 1; }
+}
+
+.queue-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
 }
 
 .queue-drag-handle {
@@ -1135,7 +1285,7 @@ body {
   cursor: grab;
   padding: 4px 2px;
   border-radius: 4px;
-  opacity: 0.5;
+  opacity: 0.45;
   transition: all 0.15s ease;
 }
 
@@ -1462,24 +1612,131 @@ body {
 
 /* Quick Picks overlay handled by .track-desktop-hover-overlay */
 
-/* Toast Notification */
+/* ========================================================
+   Spotify-Class Ultra-Premium Toast Notification System
+   ======================================================== */
 .toast-notification {
   position: fixed;
-  bottom: calc(var(--player-height) + 24px);
+  bottom: calc(var(--player-height) + 22px);
   left: 50%;
   transform: translateX(-50%);
-  background: rgba(24, 27, 38, 0.95);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 45, 85, 0.4);
-  color: #ffffff;
-  padding: 0.75rem 1.5rem;
-  border-radius: var(--radius-full);
-  font-size: 0.9rem;
-  font-weight: 600;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 20px rgba(255, 45, 85, 0.25);
-  z-index: 999;
-  animation: toastSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 1.15rem 0.65rem 0.75rem;
+  background: rgba(18, 14, 24, 0.94);
+  backdrop-filter: blur(28px) saturate(200%);
+  -webkit-backdrop-filter: blur(28px) saturate(200%);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 16px;
+  box-shadow: 
+    0 20px 45px rgba(0, 0, 0, 0.7),
+    0 4px 14px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  z-index: 1000;
+  max-width: min(92vw, 380px);
+  min-width: 200px;
+  animation: toastSpringIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   pointer-events: none;
+  overflow: hidden;
+}
+
+.toast-notification:not(.toast-has-player) {
+  bottom: 24px;
+}
+
+@keyframes toastSpringIn {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 18px) scale(0.94);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+}
+
+.toast-icon-pill {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  transition: all 0.2s ease;
+}
+
+.toast-pill-queue {
+  background: linear-gradient(135deg, rgba(255, 42, 133, 0.24), rgba(255, 122, 24, 0.18));
+  border-color: rgba(255, 42, 133, 0.35);
+  color: #ff3b8f;
+}
+
+.toast-pill-favorite {
+  background: linear-gradient(135deg, rgba(255, 45, 85, 0.25), rgba(225, 29, 72, 0.2));
+  border-color: rgba(255, 45, 85, 0.4);
+  color: #ff2d55;
+}
+
+.toast-pill-playlist {
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.25), rgba(139, 92, 246, 0.15));
+  border-color: rgba(168, 85, 247, 0.35);
+  color: #c084fc;
+}
+
+.toast-pill-playback {
+  background: linear-gradient(135deg, rgba(255, 122, 24, 0.22), rgba(255, 42, 133, 0.18));
+  border-color: rgba(255, 122, 24, 0.35);
+  color: #ff9f43;
+}
+
+.toast-pill-info {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.14);
+  color: #cbd5e1;
+}
+
+.toast-text-wrap {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+}
+
+.toast-title {
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.toast-detail {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 1px;
+}
+
+.toast-glow-accent {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.25), transparent);
 }
 
 @keyframes toastSlideUp {
@@ -2114,16 +2371,23 @@ body {
 
 .queue-pill-badge {
   position: absolute;
-  top: -3px;
-  right: -5px;
-  background: var(--accent-pink);
-  color: white;
-  font-size: 0.58rem;
-  font-weight: 700;
-  border-radius: var(--radius-full);
-  padding: 1px 4px;
-  line-height: 1.1;
-  box-shadow: 0 0 8px rgba(255, 45, 85, 0.6);
+  top: -4px;
+  right: -6px;
+  background: #ff2d55;
+  color: #ffffff;
+  font-size: 0.62rem;
+  font-weight: 800;
+  min-width: 17px;
+  height: 17px;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  line-height: 1;
+  border: 2px solid rgba(18, 14, 24, 0.95);
+  box-shadow: 0 2px 8px rgba(255, 45, 85, 0.5);
+  pointer-events: none;
 }
 
 .queue-toggle-btn {
@@ -2488,14 +2752,20 @@ body {
   }
 
   /* Queue Drawer Full Width on Mobile */
+  .queue-overlay-backdrop {
+    z-index: 145 !important;
+  }
+
   .queue-drawer {
     width: 100% !important;
     max-width: 100vw !important;
     z-index: 150 !important;
-    bottom: calc(75px + env(safe-area-inset-bottom, 0px)) !important;
-    top: calc(env(safe-area-inset-top, 0px) + 8px) !important;
+    bottom: calc(72px + env(safe-area-inset-bottom, 0px)) !important;
+    top: calc(env(safe-area-inset-top, 0px) + 12px) !important;
     padding: 1.25rem 1rem !important;
-    border-radius: 20px 20px 0 0 !important;
+    border-radius: 24px 24px 0 0 !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.14) !important;
+    box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.8) !important;
   }
 
   /* Modals on Mobile */
