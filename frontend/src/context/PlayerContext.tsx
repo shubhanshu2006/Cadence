@@ -164,6 +164,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const manualPauseRef = useRef<boolean>(false);
   const nativeQueueCommandRef = useRef<boolean>(false);
   const queueAppendIndexRef = useRef<number>(-1);
+  const activeRadioTrackIdRef = useRef<string | null>(null);
 
   // Top-level silent audio element: triggers Android MediaSession in notification shade & prevents WebView throttling
   const silentAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -395,20 +396,18 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       if (d > 0) setDuration(d);
     }
 
-    // Update queue if provided
+    const isSongInQueue = queueRef.current.some((s) => s.id === song.id);
+
+    // Update queue if provided or if song is outside the queue
     if (newQueue) {
       setQueue(newQueue);
-    } else if (!queueRef.current.some((s) => s.id === song.id)) {
-      setQueue((prev) => {
-        const currentIndex = currentSongRef.current
-          ? prev.findIndex((item) => item.id === currentSongRef.current?.id)
-          : -1;
-        const insertIndex = currentIndex >= 0 ? currentIndex + 1 : prev.length;
-        const updated = [...prev];
-        updated.splice(insertIndex, 0, song);
-        queueAppendIndexRef.current = -1;
-        return updated;
-      });
+      queueRef.current = newQueue;
+      queueAppendIndexRef.current = -1;
+    } else if (!isSongInQueue) {
+      const freshQueue = [song];
+      setQueue(freshQueue);
+      queueRef.current = freshQueue;
+      queueAppendIndexRef.current = -1;
     }
 
     // Add to History
@@ -416,17 +415,8 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     const nativeBridge = typeof window !== 'undefined' ? (window as any).AndroidMediaBridge : null;
     if (nativeBridge?.playTrack) {
-      const currentQueue = newQueue || queueRef.current;
-      const requestedQueue = newQueue || (() => {
-        const remainingQueue = currentQueue.filter((item) => item.id !== song.id);
-        const currentIndex = currentSongRef.current
-          ? remainingQueue.findIndex((item) => item.id === currentSongRef.current?.id)
-          : -1;
-        const insertIndex = currentIndex >= 0 ? currentIndex + 1 : remainingQueue.length;
-        remainingQueue.splice(insertIndex, 0, song);
-        return remainingQueue;
-      })();
-      if (newQueue) queueAppendIndexRef.current = -1;
+      const requestedQueue = newQueue || (isSongInQueue ? queueRef.current : [song]);
+      if (newQueue || !isSongInQueue) queueAppendIndexRef.current = -1;
       const nativeQueue = [
         ...requestedQueue,
         ...(requestedQueue.some((item) => item.id === song.id) ? [] : [song]),
@@ -465,36 +455,44 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       pendingSongRef.current = song;
     }
 
-    // Prefetch next songs for continuous autoplay if queue is running low
-    if (queueRef.current.length < 5) {
+    // When playing a song outside the queue, always fetch recommendations according to that song
+    // and populate the queue. If playing within an existing queue, only prefetch if running low (< 5 songs ahead).
+    const currentIndex = queueRef.current.findIndex((s) => s.id === song.id);
+    const remainingAhead = currentIndex >= 0 ? queueRef.current.length - 1 - currentIndex : 0;
+    const shouldFetchRecommendations = !newQueue && (!isSongInQueue || remainingAhead < 5);
+
+    if (shouldFetchRecommendations && activeRadioTrackIdRef.current !== song.id) {
+      activeRadioTrackIdRef.current = song.id;
       apiFetch(`/api/radio/next?videoId=${song.id}`)
         .then((res) => res.json())
         .then((data) => {
+          if (activeRadioTrackIdRef.current !== song.id) return;
           if (data.items && Array.isArray(data.items)) {
-          const existingIds = new Set(queueRef.current.map((item) => item.id));
-          const newItems = data.items.filter(
-            (item: SongItem) => !existingIds.has(item.id)
-          );
-          const nativeBridge = typeof window !== 'undefined'
-            ? (window as any).AndroidMediaBridge
-            : null;
-          if (nativeBridge?.appendToQueue) {
-            newItems.forEach((item: SongItem) => {
-              nativeBridge.appendToQueue(
-                item.id,
-                item.title,
-                item.artists?.map((artist) => artist.name).join(', ') || 'Cadence Music',
-                getNotificationArtworkUrl(item)
-              );
+            const currentQueueIds = new Set(queueRef.current.map((item) => item.id));
+            const newItems = data.items.filter(
+              (item: SongItem) => !currentQueueIds.has(item.id)
+            );
+            const nativeBridge = typeof window !== 'undefined'
+              ? (window as any).AndroidMediaBridge
+              : null;
+            if (nativeBridge?.appendToQueue) {
+              newItems.forEach((item: SongItem) => {
+                nativeBridge.appendToQueue(
+                  item.id,
+                  item.title,
+                  item.artists?.map((artist) => artist.name).join(', ') || 'Cadence Music',
+                  getNotificationArtworkUrl(item)
+                );
+              });
+            }
+            setQueue((prev) => {
+              if (activeRadioTrackIdRef.current !== song.id) return prev;
+              const currentIds = new Set(prev.map((item) => item.id));
+              const filtered = newItems.filter((item: SongItem) => !currentIds.has(item.id));
+              const updatedQueue = [...prev, ...filtered];
+              queueRef.current = updatedQueue;
+              return updatedQueue;
             });
-          }
-          setQueue((prev) => {
-            const currentIds = new Set(prev.map((item) => item.id));
-            return [
-              ...prev,
-              ...newItems.filter((item: SongItem) => !currentIds.has(item.id)),
-            ];
-          });
           }
         })
         .catch(() => {});
